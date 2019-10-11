@@ -1,6 +1,8 @@
 use std::{env, process};
 
 mod rom;
+mod cpu;
+mod nes;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -14,4 +16,5 @@ fn main() {
     println!("Loading rom at path: {}", rom_path);
 
     let rom = rom::Rom::load(rom_path);
+    let nes = nes::Nes::new_from_rom(rom);
 }
