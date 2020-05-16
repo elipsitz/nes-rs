@@ -8,7 +8,7 @@ pub struct RomHeader {
     flags_ext: Vec<u8>,
 }
 
-pub struct Rom {
+pub struct Cartridge {
     header: RomHeader,
     prg_rom: Vec<u8>,
     chr_rom: Vec<u8>,
@@ -16,11 +16,11 @@ pub struct Rom {
     mirror_mode: u8,
 }
 
-impl Rom {
-    pub fn load(path: &str) -> Rom {
+impl Cartridge {
+    pub fn load(path: &str) -> Cartridge {
         let data = fs::read(path).expect("Error reading rom file");
         assert!(data.len() >= 16);
-        assert!(data[0] == 0x4E && data[1] == 0x45 && data[2] == 0x53 && data[3] == 0x1A, "not an iNES file");
+        assert!(&data[0..4] == [0x4E, 0x45, 0x53, 0x1A], "not an iNES file");
 
         let header = RomHeader {
             prg_rom_size: data[4],
@@ -36,7 +36,7 @@ impl Rom {
         let chr_rom = &data[index..(index + (8192 * header.chr_rom_size as usize))];
         index += 8192 * header.chr_rom_size as usize;
 
-        Rom {
+        Cartridge {
             prg_rom: prg_rom.to_vec(),
             chr_rom: chr_rom.to_vec(),
             mapper_id: (header.flags7 & 0xF0) | (header.flags6 >> 4),
