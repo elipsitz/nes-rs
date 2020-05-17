@@ -37,13 +37,37 @@ pub struct PpuState {
 
 impl Nes {
     pub fn new(cart: Cartridge) -> Nes {
-        Nes {
+        let mut nes = Nes {
             state: State::new(cart),
-        }
+        };
+        nes.state.cpu.pc = 0xC000u16; // XXX: nestest auto mode
+        nes
     }
 
     pub fn run(&mut self) {
-        cpu::simulate(&mut self.state, 100);
+        cpu::emulate(&mut self.state, 100);
+    }
+}
+
+impl CpuState {
+    pub fn new() -> CpuState {
+        CpuState {
+            a: 0,
+            x: 0,
+            y: 0,
+            pc: 0,
+            sp: 0xFD,
+
+            // FIXME: fix status
+            status_c: false,
+            status_z: false,
+            status_i: false,
+            status_d: false,
+            status_v: false,
+            status_n: false,
+
+            cycles: 0,
+        }
     }
 }
 
