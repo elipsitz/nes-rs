@@ -9,11 +9,11 @@ pub struct RomHeader {
 }
 
 pub struct Cartridge {
-    header: RomHeader,
-    prg_rom: Vec<u8>,
-    chr_rom: Vec<u8>,
-    mapper_id: u8,
-    mirror_mode: u8,
+    pub header: RomHeader,
+    pub prg_rom: Vec<u8>,
+    pub chr_rom: Vec<u8>,
+    pub mapper_id: u8,
+    pub mirror_mode: u8,
 }
 
 impl Cartridge {

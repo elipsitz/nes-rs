@@ -1,24 +1,42 @@
 use crate::cartridge::Cartridge;
-use crate::cpu::Cpu;
-use crate::ppu::Ppu;
 use crate::mapper;
 
-pub struct Nes {
-    rom: Cartridge,
-    ram: [u8; 2048],
-    cpu: Cpu,
-    ppu: Ppu,
-    mapper: Box<dyn mapper::Mapper>,
+pub struct State {
+    pub ram: [u8; 2048],
+    pub cpu: CpuState,
+    pub ppu: PpuState,
+    pub mapper: Box<dyn mapper::Mapper>,
 }
 
-impl Nes {
-    pub fn new_from_rom(rom: Cartridge) -> Nes {
-        Nes {
-            rom,
+#[derive(Default)]
+pub struct CpuState {
+    pub a: u8,
+    pub x: u8,
+    pub y: u8,
+    pub pc: u16,
+    pub sp: u8,
+
+    pub status_c: bool,
+    pub status_z: bool,
+    pub status_i: bool,
+    pub status_d: bool,
+    pub status_v: bool,
+    pub status_n: bool,
+
+    pub cycles: u64,
+}
+
+#[derive(Default)]
+pub struct PpuState {
+}
+
+impl State {
+    pub fn new(cart: Cartridge) -> State {
+        State {
             ram: [0; 2048],
-            cpu: Cpu::new(),
-            ppu: Ppu::new(),
-            mapper: Box::new(mapper::Mapper0::new()),
+            cpu: CpuState::default(),
+            ppu: PpuState::default(),
+            mapper: mapper::make_mapper(cart),
         }
     }
 
