@@ -21,11 +21,17 @@ pub struct CpuState {
     pub pc: u16,
     pub sp: u8,
 
+    // Carry
     pub status_c: bool,
+    // Zero
     pub status_z: bool,
+    // Interrupt Disable
     pub status_i: bool,
+    // Decimal
     pub status_d: bool,
+    // Overflow
     pub status_v: bool,
+    // Negative
     pub status_n: bool,
 
     pub cycles: u64,
@@ -40,6 +46,7 @@ impl Nes {
         let mut nes = Nes {
             state: State::new(cart),
         };
+        nes.state.cpu.cycles = 7;
         nes.state.cpu.pc = 0xC000u16; // XXX: nestest auto mode
         nes
     }
@@ -57,16 +64,13 @@ impl CpuState {
             y: 0,
             pc: 0,
             sp: 0xFD,
-
-            // FIXME: fix status
+            cycles: 0,
             status_c: false,
             status_z: false,
-            status_i: false,
+            status_i: true,
             status_d: false,
             status_v: false,
             status_n: false,
-
-            cycles: 0,
         }
     }
 }
@@ -75,7 +79,7 @@ impl State {
     pub fn new(cart: Cartridge) -> State {
         State {
             ram: [0; 2048],
-            cpu: CpuState::default(),
+            cpu: CpuState::new(),
             ppu: PpuState::default(),
             mapper: mapper::make_mapper(cart),
         }
@@ -83,11 +87,13 @@ impl State {
 
     pub fn cpu_read(&mut self, addr: u16) -> u8 {
         // https://wiki.nesdev.com/w/index.php/CPU_memory_map
-        match addr {
+        let data = match addr {
             0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize],
             0x4020..=0xFFFF => self.mapper.read(addr),
             _ => panic!("out of bounds read")
-        }
+        };
+        self.cpu.cycles += 1;
+        data
     }
 
     pub fn cpu_write(&mut self, addr: u16, val: u8) {
@@ -97,5 +103,6 @@ impl State {
             0x4020..=0xFFFF => self.mapper.write(addr, val),
             _ => panic!("out of bounds read")
         }
+        self.cpu.cycles += 1;
     }
 }
