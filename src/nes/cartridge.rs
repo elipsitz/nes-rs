@@ -5,7 +5,7 @@ pub struct RomHeader {
     chr_rom_size: u8,  // in  8KB units
     flags6: u8,
     flags7: u8,
-    flags_ext: Vec<u8>,
+    _flags_ext: Vec<u8>,
 }
 
 pub struct Cartridge {
@@ -27,7 +27,7 @@ impl Cartridge {
             chr_rom_size: data[5],
             flags6: data[6],
             flags7: data[7],
-            flags_ext: data[8..16].to_vec(),
+            _flags_ext: data[8..16].to_vec(),
         };
 
         let mut index: usize = 16;
@@ -35,6 +35,7 @@ impl Cartridge {
         index += 16384 * header.prg_rom_size as usize;
         let chr_rom = &data[index..(index + (8192 * header.chr_rom_size as usize))];
         index += 8192 * header.chr_rom_size as usize;
+        assert_eq!(index, data.len());
 
         Cartridge {
             prg_rom: prg_rom.to_vec(),
