@@ -1,5 +1,10 @@
-use crate::cartridge::Cartridge;
-use crate::mapper;
+use super::cartridge::Cartridge;
+use super::mapper;
+use super::cpu;
+
+pub struct Nes {
+    pub state: State,
+}
 
 pub struct State {
     pub ram: [u8; 2048],
@@ -28,6 +33,18 @@ pub struct CpuState {
 
 #[derive(Default)]
 pub struct PpuState {
+}
+
+impl Nes {
+    pub fn new(cart: Cartridge) -> Nes {
+        Nes {
+            state: State::new(cart),
+        }
+    }
+
+    pub fn run(&mut self) {
+        cpu::simulate(&mut self.state, 100);
+    }
 }
 
 impl State {

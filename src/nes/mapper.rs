@@ -1,5 +1,4 @@
-use crate::nes::State;
-use crate::cartridge::Cartridge;
+use super::cartridge::Cartridge;
 
 pub trait Mapper {
     fn read(&mut self, addr: u16) -> u8;
@@ -28,6 +27,6 @@ impl Mapper for Mapper0 {
         }
     }
 
-    fn write(&mut self, addr: u16, val: u8) {
+    fn write(&mut self, _addr: u16, _val: u8) {
     }
 }

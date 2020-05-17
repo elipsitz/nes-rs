@@ -1,8 +1,6 @@
 use std::{env, process};
 
-mod cartridge;
 mod nes;
-mod mapper;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,6 +13,7 @@ fn main() {
     let rom_path: &str = &args[1];
     println!("Loading rom at path: {}", rom_path);
 
-    let cart = cartridge::Cartridge::load(rom_path);
-    let nes = nes::State::new(cart);
+    let cart = nes::cartridge::Cartridge::load(rom_path);
+    let mut nes = nes::nes::Nes::new(cart);
+    nes.run();
 }
