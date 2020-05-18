@@ -213,6 +213,31 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 s.cpu_write(addr, data);
             }
         };
+        (abs, $idx_reg:ident; $expr:block) => {
+            {
+                let (initial, fixed) = address_absolute_indexed(s, s.cpu.$idx_reg);
+                s.cpu_read(initial);
+                let data = $expr;
+                s.cpu_write(fixed, data);
+            }
+        };
+        // Indexed Indirect (Indirect,X)
+        (indirect, x; $expr:block) => {
+            {
+                let address = address_indexed_indirect(s);
+                let data = $expr;
+                s.cpu_write(address, data);
+            }
+        };
+        // Indirect Indexed (Indirect),Y
+        (indirect, y; $expr:block) => {
+            {
+                let (initial, fixed) = address_indirect_indexed(s);
+                s.cpu_read(initial);
+                let data = $expr;
+                s.cpu_write(fixed, data);
+            }
+        };
     }
 
     let start_cycles = s.cpu.cycles;
@@ -296,14 +321,27 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 s.cpu.cycles += 1;
                 s.cpu.pc = addr;
             }
-            // TODO: LDA - Load Accumulator
+            // LDA - Load Accumulator
+            0xA9 => inst_read!(imm; data, a, { data }),
+            0xA5 => inst_read!(zero; data, a, { data }),
+            0xB5 => inst_read!(zero, x; data, a, { data }),
+            0xAD => inst_read!(abs; data, a, { data }),
+            0xBD => inst_read!(abs, x; data, a, { data }),
+            0xB9 => inst_read!(abs, y; data, a, { data }),
+            0xA1 => inst_read!(indirect, x; data, a, { data }),
+            0xB1 => inst_read!(indirect, y; data, a, { data }),
             // LDX - Load X Register
             0xA2 => inst_read!(imm; data, x, { data }),
             0xA6 => inst_read!(zero; data, x, { data }),
             0xB6 => inst_read!(zero, y; data, x, { data }),
             0xAE => inst_read!(abs; data, x, { data }),
             0xBE => inst_read!(abs, y; data, x, { data }),
-            // TODO: LDY - Load Y Register
+            // LDY - Load Y Register
+            0xA0 => inst_read!(imm; data, y, { data }),
+            0xA4 => inst_read!(zero; data, y, { data }),
+            0xB4 => inst_read!(zero, x; data, y, { data }),
+            0xAC => inst_read!(abs; data, y, { data }),
+            0xBC => inst_read!(abs, x; data, y, { data }),
             // TODO: LSR - Logical Shift Right
             // NOP - No Operation
             0xEA => { s.cpu.cycles += 1; }
@@ -323,7 +361,14 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xF8 => { s.cpu.status_d = true; s.cpu.cycles += 1; }
             // SEI - Set Interrupt Disable
             0x78 => { s.cpu.status_i = true; s.cpu.cycles += 1; }
-            // TODO: STA - Store Accumulator
+            // STA - Store Accumulator
+            0x85 => inst_write!(zero; { s.cpu.a }),
+            0x95 => inst_write!(zero, x; { s.cpu.a }),
+            0x8D => inst_write!(abs; { s.cpu.a }),
+            0x9D => inst_write!(abs, x; { s.cpu.a }),
+            0x99 => inst_write!(abs, y; { s.cpu.a }),
+            0x81 => inst_write!(indirect, x; { s.cpu.a }),
+            0x91 => inst_write!(indirect, y; { s.cpu.a }),
             // STX - Store X Register
             0x86 => inst_write!(zero; { s.cpu.x }),
             0x96 => inst_write!(zero, y; { s.cpu.x }),
