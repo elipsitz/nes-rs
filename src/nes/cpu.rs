@@ -99,6 +99,19 @@ fn compute_adc(s: &mut State, data: u8) -> u8 {
     (result & 0xFF) as u8
 }
 
+fn do_branch(s: &mut State, condition: bool) {
+    let offset = address_immediate(s) as i8;
+    if condition {
+        let old_pc = s.cpu.pc;
+        let new_pc = ((old_pc as i32) + (offset as i32)) as u16;
+        s.cpu.cycles += 1;
+        if (old_pc & 0xFF00) != (new_pc & 0xFF00) {
+            s.cpu.cycles += 1;
+        }
+        s.cpu.pc = new_pc;
+    }
+}
+
 pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     // Read instruction: args: addressing mode, destination register, arithmetic expression
     macro_rules! inst_read {
@@ -233,16 +246,24 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x21 => inst_read!(indirect, x; data, a, { s.cpu.a & data }),
             0x31 => inst_read!(indirect, y; data, a, { s.cpu.a & data }),
             // TODO: ASL - Arithmetic Shift Left
-            // TODO: BCC - Branch if Carry Clear
-            // TODO: BCS - Branch if Carry Set
-            // TODO: BEQ - Branch if Equal
+            // BCC - Branch if Carry Clear
+            0x90 => do_branch(s, !s.cpu.status_c),
+            // BCS - Branch if Carry Set
+            0xB0 => do_branch(s, s.cpu.status_c),
+            // BEQ - Branch if Equal
+            0xF0 => do_branch(s, s.cpu.status_z),
             // TODO: BIT - Bit Test
-            // TODO: BMI - Branch if Minus
-            // TODO: BNE - Branch if Not Equal
-            // TODO: BPL - Branch if Positive
+            // BMI - Branch if Minus
+            0x30 => do_branch(s, s.cpu.status_n),
+            // BNE - Branch if Not Equal
+            0xD0 => do_branch(s, !s.cpu.status_z),
+            // BPL - Branch if Positive
+            0x10 => do_branch(s, !s.cpu.status_n),
             // TODO: BRK - Force Interrupt
-            // TODO: BVC - Branch if Overflow Clear
-            // TODO: BVS - Branch if Overflow Set
+            // BVC - Branch if Overflow Clear
+            0x50 => do_branch(s, !s.cpu.status_v),
+            // BVS - Branch if Overflow Set
+            0x70 => do_branch(s, s.cpu.status_v),
             // CLC - Clear Carry Flag
             0x18 => { s.cpu.status_c = false; s.cpu.cycles += 1; }
             // CLD - Clear Decimal Mode
