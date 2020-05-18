@@ -243,10 +243,14 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // TODO: BRK - Force Interrupt
             // TODO: BVC - Branch if Overflow Clear
             // TODO: BVS - Branch if Overflow Set
-            // TODO: CLC - Clear Carry Flag
-            // TODO: CLD - Clear Decimal Mode
-            // TODO: CLI - Clear Interrupt Disable
-            // TODO: CLV - Clear Overflow Flag
+            // CLC - Clear Carry Flag
+            0x18 => { s.cpu.status_c = false; s.cpu.cycles += 1; }
+            // CLD - Clear Decimal Mode
+            0xD8 => { s.cpu.status_d = false; s.cpu.cycles += 1; }
+            // CLI - Clear Interrupt Disable
+            0x58 => { s.cpu.status_i = false; s.cpu.cycles += 1; }
+            // CLV - Clear Overflow Flag
+            0xB8 => { s.cpu.status_v = false; s.cpu.cycles += 1; }
             // TODO: CMP - Compare
             // TODO: CPX - Compare X Register
             // TODO: CPY - Compare Y Register
@@ -294,20 +298,31 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // TODO: SBC - Subtract with Carry
             // SEC - Set Carry Flag
             0x38 => { s.cpu.status_c = true; s.cpu.cycles += 1; }
-            // TODO: SED - Set Decimal Flag
-            // TODO: SEI - Set Interrupt Disable
+            // SED - Set Decimal Flag
+            0xF8 => { s.cpu.status_d = true; s.cpu.cycles += 1; }
+            // SEI - Set Interrupt Disable
+            0x78 => { s.cpu.status_i = true; s.cpu.cycles += 1; }
             // TODO: STA - Store Accumulator
             // STX - Store X Register
             0x86 => inst_write!(zero; { s.cpu.x }),
             0x96 => inst_write!(zero, y; { s.cpu.x }),
             0x8E => inst_write!(abs; { s.cpu.x }),
-            // TODO: STY - Store Y Register
-            // TODO: TAX - Transfer Accumulator to X
-            // TODO: TAY - Transfer Accumulator to Y
-            // TODO: TSX - Transfer Stack Pointer to X
-            // TODO: TXA - Transfer X to Accumulator
-            // TODO: TXS - Transfer X to Stack Pointer
-            // TODO: TYA - Transfer Y to Accumulator
+            // STY - Store Y Register
+            0x84 => inst_write!(zero; { s.cpu.y }),
+            0x94 => inst_write!(zero, x; { s.cpu.y }),
+            0x8C => inst_write!(abs; { s.cpu.y }),
+            // TAX - Transfer Accumulator to X
+            0xAA => { s.cpu.x = s.cpu.a; s.cpu.cycles += 1; set_status_load(s, s.cpu.x) }
+            // TAY - Transfer Accumulator to Y
+            0xA8 => { s.cpu.y = s.cpu.a; s.cpu.cycles += 1; set_status_load(s, s.cpu.y) }
+            // TSX - Transfer Stack Pointer to X
+            0xBA => { s.cpu.x = s.cpu.sp; s.cpu.cycles += 1; set_status_load(s, s.cpu.x) }
+            // TXA - Transfer X to Accumulator
+            0x8A => { s.cpu.a = s.cpu.x; s.cpu.cycles += 1; set_status_load(s, s.cpu.a) }
+            // TXS - Transfer X to Stack Pointer
+            0x9A => { s.cpu.sp = s.cpu.x; s.cpu.cycles += 1 }
+            // TYA - Transfer Y to Accumulator
+            0x98 => { s.cpu.a = s.cpu.y; s.cpu.cycles += 1; set_status_load(s, s.cpu.a) }
             _ => panic!("invalid instruction: 0x{:02X}", opcode)
         }
     }
