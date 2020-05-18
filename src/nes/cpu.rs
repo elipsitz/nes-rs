@@ -155,7 +155,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
         (indirect, x; $data:ident, $reg:ident, $expr:block) => {
             {
                 let address = address_indexed_indirect(s);
-                let $data = s.cpu_read(addr);
+                let $data = s.cpu_read(address);
                 let result = $expr;
                 s.cpu.$reg = result;
                 set_status_load(s, result);
@@ -223,6 +223,40 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x79 => inst_read!(abs, y; data, a, { compute_adc(s, data) }),
             0x61 => inst_read!(indirect, x; data, a, { compute_adc(s, data) }),
             0x71 => inst_read!(indirect, y; data, a, { compute_adc(s, data) }),
+            // AND - Logical AND
+            0x29 => inst_read!(imm; data, a, { s.cpu.a & data }),
+            0x25 => inst_read!(zero; data, a, { s.cpu.a & data }),
+            0x35 => inst_read!(zero, x; data, a, { s.cpu.a & data }),
+            0x2D => inst_read!(abs; data, a, { s.cpu.a & data }),
+            0x3D => inst_read!(abs, x; data, a, { s.cpu.a & data }),
+            0x39 => inst_read!(abs, y; data, a, { s.cpu.a & data }),
+            0x21 => inst_read!(indirect, x; data, a, { s.cpu.a & data }),
+            0x31 => inst_read!(indirect, y; data, a, { s.cpu.a & data }),
+            // TODO: ASL - Arithmetic Shift Left
+            // TODO: BCC - Branch if Carry Clear
+            // TODO: BCS - Branch if Carry Set
+            // TODO: BEQ - Branch if Equal
+            // TODO: BIT - Bit Test
+            // TODO: BMI - Branch if Minus
+            // TODO: BNE - Branch if Not Equal
+            // TODO: BPL - Branch if Positive
+            // TODO: BRK - Force Interrupt
+            // TODO: BVC - Branch if Overflow Clear
+            // TODO: BVS - Branch if Overflow Set
+            // TODO: CLC - Clear Carry Flag
+            // TODO: CLD - Clear Decimal Mode
+            // TODO: CLI - Clear Interrupt Disable
+            // TODO: CLV - Clear Overflow Flag
+            // TODO: CMP - Compare
+            // TODO: CPX - Compare X Register
+            // TODO: CPY - Compare Y Register
+            // TODO: DEC - Decrement Memory
+            // TODO: DEX - Decrement X Register
+            // TODO: DEY - Decrement Y Register
+            // TODO: EOR - Exclusive OR
+            // TODO: INC - Increment Memory
+            // TODO: INX - Increment X Register
+            // TODO: INY - Increment Y Register
             // JMP - Jump
             0x4C => s.cpu.pc = address_absolute(s),
             0x6C => s.cpu.pc = address_indirect(s),
@@ -237,21 +271,43 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 s.cpu.cycles += 1;
                 s.cpu.pc = addr;
             }
+            // TODO: LDA - Load Accumulator
             // LDX - Load X Register
             0xA2 => inst_read!(imm; data, x, { data }),
             0xA6 => inst_read!(zero; data, x, { data }),
             0xB6 => inst_read!(zero, y; data, x, { data }),
             0xAE => inst_read!(abs; data, x, { data }),
             0xBE => inst_read!(abs, y; data, x, { data }),
+            // TODO: LDY - Load Y Register
+            // TODO: LSR - Logical Shift Right
             // NOP - No Operation
             0xEA => { s.cpu.cycles += 1; }
+            // TODO: ORA - Logical Inclusive OR
+            // TODO: PHA - Push Accumulator
+            // TODO: PHP - Push Processor Status
+            // TODO: PLA - Pull Accumulator
+            // TODO: PLP - Pull Processor Status
+            // TODO: ROL - Rotate Left
+            // TODO: ROR - Rotate Right
+            // TODO: RTI - Return from Interrupt
+            // TODO: RTS - Return from Subroutine
+            // TODO: SBC - Subtract with Carry
             // SEC - Set Carry Flag
             0x38 => { s.cpu.status_c = true; s.cpu.cycles += 1; }
+            // TODO: SED - Set Decimal Flag
+            // TODO: SEI - Set Interrupt Disable
+            // TODO: STA - Store Accumulator
             // STX - Store X Register
             0x86 => inst_write!(zero; { s.cpu.x }),
             0x96 => inst_write!(zero, y; { s.cpu.x }),
             0x8E => inst_write!(abs; { s.cpu.x }),
-
+            // TODO: STY - Store Y Register
+            // TODO: TAX - Transfer Accumulator to X
+            // TODO: TAY - Transfer Accumulator to Y
+            // TODO: TSX - Transfer Stack Pointer to X
+            // TODO: TXA - Transfer X to Accumulator
+            // TODO: TXS - Transfer X to Stack Pointer
+            // TODO: TYA - Transfer Y to Accumulator
             _ => panic!("invalid instruction: 0x{:02X}", opcode)
         }
     }
