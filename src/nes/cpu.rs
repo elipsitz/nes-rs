@@ -1,6 +1,6 @@
 use super::nes::State;
 
-fn pack_status_flags(s: &State, status_b: bool) -> u8 {
+fn status_pack(s: &State, status_b: bool) -> u8 {
     0
         | (s.cpu.status_c as u8) << 0
         | (s.cpu.status_z as u8) << 1
@@ -10,6 +10,15 @@ fn pack_status_flags(s: &State, status_b: bool) -> u8 {
         | (1) << 5
         | (s.cpu.status_v as u8) << 6
         | (s.cpu.status_n as u8) << 7
+}
+
+fn status_unpack(s: &mut State, packed: u8) {
+    s.cpu.status_c = packed & (1 << 0) > 0;
+    s.cpu.status_z = packed & (1 << 1) > 0;
+    s.cpu.status_i = packed & (1 << 2) > 0;
+    s.cpu.status_d = packed & (1 << 3) > 0;
+    s.cpu.status_v = packed & (1 << 6) > 0;
+    s.cpu.status_n = packed & (1 << 7) > 0;
 }
 
 // Absolute addressing: 2 bytes describe a full 16-bit address to use.
@@ -266,7 +275,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
         let opcode = s.cpu_read(s.cpu.pc);
         println!(
             "{:04X}  {:02X} ______________________________________ A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} PPU:_______ CYC:{}",
-            s.cpu.pc, opcode, s.cpu.a, s.cpu.x, s.cpu.y, pack_status_flags(s, false), s.cpu.sp, cycle
+            s.cpu.pc, opcode, s.cpu.a, s.cpu.x, s.cpu.y, status_pack(s, false), s.cpu.sp, cycle
         );
         s.cpu.pc += 1;
 
@@ -368,9 +377,19 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xEA => { s.cpu.cycles += 1; }
             // TODO: ORA - Logical Inclusive OR
             // TODO: PHA - Push Accumulator
-            // TODO: PHP - Push Processor Status
+            // PHP - Push Processor Status
+            0x08 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                stack_push(s, status_pack(s, true));
+            }
             // TODO: PLA - Pull Accumulator
-            // TODO: PLP - Pull Processor Status
+            // PLP - Pull Processor Status
+            0x28 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu.cycles += 1;
+                let status = stack_pull(s);
+                status_unpack(s, status);
+            }
             // TODO: ROL - Rotate Left
             // TODO: ROR - Rotate Right
             // TODO: RTI - Return from Interrupt
