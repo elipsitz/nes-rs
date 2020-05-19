@@ -376,13 +376,23 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // NOP - No Operation
             0xEA => { s.cpu.cycles += 1; }
             // TODO: ORA - Logical Inclusive OR
-            // TODO: PHA - Push Accumulator
+            // PHA - Push Accumulator
+            0x48 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                stack_push(s, s.cpu.a);
+            }
             // PHP - Push Processor Status
             0x08 => {
                 s.cpu_read(s.cpu.pc); // Dummy read.
                 stack_push(s, status_pack(s, true));
             }
-            // TODO: PLA - Pull Accumulator
+            // PLA - Pull Accumulator
+            0x68 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu.cycles += 1;
+                s.cpu.a = stack_pull(s);
+                set_status_load(s, s.cpu.a);
+            }
             // PLP - Pull Processor Status
             0x28 => {
                 s.cpu_read(s.cpu.pc); // Dummy read.
