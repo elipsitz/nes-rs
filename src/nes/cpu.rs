@@ -364,7 +364,18 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // TODO: ROL - Rotate Left
             // TODO: ROR - Rotate Right
             // TODO: RTI - Return from Interrupt
-            // TODO: RTS - Return from Subroutine
+            // RTS - Return from Subroutine
+            0x60 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu.sp += 1;
+                s.cpu.cycles += 1;
+                let lo = s.cpu_read(0x0100 | (s.cpu.sp as u16)) as u16;
+                s.cpu.sp += 1;
+                let hi = s.cpu_read(0x0100 | (s.cpu.sp as u16)) as u16;
+                s.cpu.pc = (hi << 8) | lo;
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu.pc += 1;
+            }
             // TODO: SBC - Subtract with Carry
             // SEC - Set Carry Flag
             0x38 => { s.cpu.status_c = true; s.cpu.cycles += 1; }
