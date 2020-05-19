@@ -108,6 +108,17 @@ fn compute_adc(s: &mut State, data: u8) -> u8 {
     (result & 0xFF) as u8
 }
 
+// Compute Subtract with Carry
+fn compute_sbc(s: &mut State, data: u8) -> u8 {
+    let a = s.cpu.a as i16;
+    let b = data as i16;
+    let c = s.cpu.status_c as i16;
+    let result = a - b - (1 - c);
+    s.cpu.status_c = result >= 0;
+    s.cpu.status_v = (a ^ b) & 0x80 != 0 && (a ^ result) & 0x80 != 0;
+    (result & 0xFF) as u8
+}
+
 // Compute Bit Test
 fn compute_bit(s: &mut State, data: u8) {
     s.cpu.status_z = (s.cpu.a & data) == 0;
@@ -354,7 +365,15 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // TODO: DEC - Decrement Memory
             // TODO: DEX - Decrement X Register
             // TODO: DEY - Decrement Y Register
-            // TODO: EOR - Exclusive OR
+            // EOR - Exclusive OR
+            0x49 => inst_load!(imm; data, a, { s.cpu.a ^ data }),
+            0x45 => inst_load!(zero; data, a, { s.cpu.a ^ data }),
+            0x55 => inst_load!(zero, x; data, a, { s.cpu.a ^ data }),
+            0x4D => inst_load!(abs; data, a, { s.cpu.a ^ data }),
+            0x5D => inst_load!(abs, x; data, a, { s.cpu.a ^ data }),
+            0x59 => inst_load!(abs, y; data, a, { s.cpu.a ^ data }),
+            0x41 => inst_load!(indirect, x; data, a, { s.cpu.a ^ data }),
+            0x51 => inst_load!(indirect, y; data, a, { s.cpu.a ^ data }),
             // TODO: INC - Increment Memory
             // TODO: INX - Increment X Register
             // TODO: INY - Increment Y Register
@@ -396,7 +415,15 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // TODO: LSR - Logical Shift Right
             // NOP - No Operation
             0xEA => { s.cpu.cycles += 1; }
-            // TODO: ORA - Logical Inclusive OR
+            // ORA - Logical Inclusive OR
+            0x09 => inst_load!(imm; data, a, { s.cpu.a | data }),
+            0x05 => inst_load!(zero; data, a, { s.cpu.a | data }),
+            0x15 => inst_load!(zero, x; data, a, { s.cpu.a | data }),
+            0x0D => inst_load!(abs; data, a, { s.cpu.a | data }),
+            0x1D => inst_load!(abs, x; data, a, { s.cpu.a | data }),
+            0x19 => inst_load!(abs, y; data, a, { s.cpu.a | data }),
+            0x01 => inst_load!(indirect, x; data, a, { s.cpu.a | data }),
+            0x11 => inst_load!(indirect, y; data, a, { s.cpu.a | data }),
             // PHA - Push Accumulator
             0x48 => {
                 s.cpu_read(s.cpu.pc); // Dummy read.
@@ -434,7 +461,15 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 s.cpu_read(s.cpu.pc); // Dummy read.
                 s.cpu.pc += 1;
             }
-            // TODO: SBC - Subtract with Carry
+            // SBC - Subtract with Carry
+            0xE9 => inst_load!(imm; data, a, { compute_sbc(s, data) }),
+            0xE5 => inst_load!(zero; data, a, { compute_sbc(s, data) }),
+            0xF5 => inst_load!(zero, x; data, a, { compute_sbc(s, data) }),
+            0xED => inst_load!(abs; data, a, { compute_sbc(s, data) }),
+            0xFD => inst_load!(abs, x; data, a, { compute_sbc(s, data) }),
+            0xF9 => inst_load!(abs, y; data, a, { compute_sbc(s, data) }),
+            0xE1 => inst_load!(indirect, x; data, a, { compute_sbc(s, data) }),
+            0xF1 => inst_load!(indirect, y; data, a, { compute_sbc(s, data) }),
             // SEC - Set Carry Flag
             0x38 => { s.cpu.status_c = true; s.cpu.cycles += 1; }
             // SED - Set Decimal Flag
