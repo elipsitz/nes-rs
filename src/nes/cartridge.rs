@@ -14,6 +14,7 @@ pub struct Cartridge {
     pub chr_rom: Vec<u8>,
     pub mapper_id: u8,
     pub mirror_mode: u8,
+    pub _extra_data: Vec<u8>,
 }
 
 impl Cartridge {
@@ -35,14 +36,15 @@ impl Cartridge {
         index += 16384 * header.prg_rom_size as usize;
         let chr_rom = &data[index..(index + (8192 * header.chr_rom_size as usize))];
         index += 8192 * header.chr_rom_size as usize;
-        assert_eq!(index, data.len());
+        let extra_data = &data[index..data.len()];
 
         Cartridge {
             prg_rom: prg_rom.to_vec(),
             chr_rom: chr_rom.to_vec(),
             mapper_id: (header.flags7 & 0xF0) | (header.flags6 >> 4),
             mirror_mode: (header.flags6 & 0x1) | (header.flags6 & 0x8 >> 2),
-            header
+            header,
+            _extra_data: extra_data.to_vec(),
         }
     }
 }
