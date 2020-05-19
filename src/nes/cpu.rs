@@ -115,6 +115,13 @@ fn compute_bit(s: &mut State, data: u8) {
     s.cpu.status_n = (data & 0x80) > 0;
 }
 
+// Compute Compare (z -- register, m -- memory)
+fn compute_cmp(s: &mut State, z: u8, m: u8) {
+    s.cpu.status_c = z >= m;
+    s.cpu.status_z = z == m;
+    s.cpu.status_n = (z.wrapping_sub(m) & 0x80) > 0;
+}
+
 fn do_branch(s: &mut State, condition: bool) {
     let offset = address_immediate(s) as i8;
     if condition {
@@ -327,9 +334,23 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x58 => { s.cpu.status_i = false; s.cpu.cycles += 1; }
             // CLV - Clear Overflow Flag
             0xB8 => { s.cpu.status_v = false; s.cpu.cycles += 1; }
-            // TODO: CMP - Compare
-            // TODO: CPX - Compare X Register
-            // TODO: CPY - Compare Y Register
+            // CMP - Compare
+            0xC9 => inst_fetch!(imm; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xC5 => inst_fetch!(zero; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xD5 => inst_fetch!(zero, x; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xCD => inst_fetch!(abs; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xDD => inst_fetch!(abs, x; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xD9 => inst_fetch!(abs, y; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xC1 => inst_fetch!(indirect, x; data, { compute_cmp(s, s.cpu.a, data) }),
+            0xD1 => inst_fetch!(indirect, y; data, { compute_cmp(s, s.cpu.a, data) }),
+            // CPX - Compare X Register
+            0xE0 => inst_fetch!(imm; data, { compute_cmp(s, s.cpu.x, data) }),
+            0xE4 => inst_fetch!(zero; data, { compute_cmp(s, s.cpu.x, data) }),
+            0xEC => inst_fetch!(abs; data, { compute_cmp(s, s.cpu.x, data) }),
+            // CPY - Compare Y Register
+            0xC0 => inst_fetch!(imm; data, { compute_cmp(s, s.cpu.y, data) }),
+            0xC4 => inst_fetch!(zero; data, { compute_cmp(s, s.cpu.y, data) }),
+            0xCC => inst_fetch!(abs; data, { compute_cmp(s, s.cpu.y, data) }),
             // TODO: DEC - Decrement Memory
             // TODO: DEX - Decrement X Register
             // TODO: DEY - Decrement Y Register
