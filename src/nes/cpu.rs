@@ -146,6 +146,12 @@ fn do_branch(s: &mut State, condition: bool) {
     }
 }
 
+fn do_wrapping_add(s: &mut State, data: u8, amount: i8) -> u8 {
+    let result = (((data as i16) + (amount as i16)) & 0xFF) as u8;
+    set_status_load(s, result);
+    result
+}
+
 fn stack_push(s: &mut State, data: u8) {
     s.cpu_write(0x0100 | (s.cpu.sp as u16), data);
     s.cpu.sp -= 1;
@@ -363,8 +369,10 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xC4 => inst_fetch!(zero; data, { compute_cmp(s, s.cpu.y, data) }),
             0xCC => inst_fetch!(abs; data, { compute_cmp(s, s.cpu.y, data) }),
             // TODO: DEC - Decrement Memory
-            // TODO: DEX - Decrement X Register
-            // TODO: DEY - Decrement Y Register
+            // DEX - Decrement X Register
+            0xCA => { s.cpu_read(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, -1) }
+            // DEY - Decrement Y Register
+            0x88 => { s.cpu_read(s.cpu.pc); s.cpu.y = do_wrapping_add(s, s.cpu.y, -1) }
             // EOR - Exclusive OR
             0x49 => inst_load!(imm; data, a, { s.cpu.a ^ data }),
             0x45 => inst_load!(zero; data, a, { s.cpu.a ^ data }),
@@ -375,8 +383,10 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x41 => inst_load!(indirect, x; data, a, { s.cpu.a ^ data }),
             0x51 => inst_load!(indirect, y; data, a, { s.cpu.a ^ data }),
             // TODO: INC - Increment Memory
-            // TODO: INX - Increment X Register
-            // TODO: INY - Increment Y Register
+            // INX - Increment X Register
+            0xE8 => { s.cpu_read(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, 1) }
+            // INY - Increment Y Register
+            0xC8 => { s.cpu_read(s.cpu.pc); s.cpu.y = do_wrapping_add(s, s.cpu.y, 1) }
             // JMP - Jump
             0x4C => s.cpu.pc = address_absolute(s),
             0x6C => s.cpu.pc = address_indirect(s),
