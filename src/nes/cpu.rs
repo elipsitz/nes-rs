@@ -645,6 +645,36 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x9A => { s.cpu.sp = s.cpu.x; s.cpu.cycles += 1 }
             // TYA - Transfer Y to Accumulator
             0x98 => { s.cpu.a = s.cpu.y; s.cpu.cycles += 1; set_status_load(s, s.cpu.a) }
+            // Undocumented NOPs (zero-page: 2 byte, 3 cycle)
+            0x04 => inst_fetch!(zero; _data, { }),
+            0x44 => inst_fetch!(zero; _data, { }),
+            0x64 => inst_fetch!(zero; _data, { }),
+            // Undocumented NOPs (implied: 2 byte, 2 cycle)
+            0x80 => { s.cpu_read(s.cpu.pc); s.cpu.pc += 1; }
+            0x89 => { s.cpu_read(s.cpu.pc); s.cpu.pc += 1; }
+            // Undocumented NOPs (implied: 1 byte, 2 cycle)
+            0x1A => { s.cpu_read(s.cpu.pc); }
+            0x3A => { s.cpu_read(s.cpu.pc); }
+            0x5A => { s.cpu_read(s.cpu.pc); }
+            0x7A => { s.cpu_read(s.cpu.pc); }
+            0xDA => { s.cpu_read(s.cpu.pc); }
+            0xFA => { s.cpu_read(s.cpu.pc); }
+            // Undocumented NOPs (zero-page-x: 2 byte, 4 cycle)
+            0x14 => inst_fetch!(zero, x; _data, { }),
+            0x34 => inst_fetch!(zero, x; _data, { }),
+            0x54 => inst_fetch!(zero, x; _data, { }),
+            0x74 => inst_fetch!(zero, x; _data, { }),
+            0xD4 => inst_fetch!(zero, x; _data, { }),
+            0xF4 => inst_fetch!(zero, x; _data, { }),
+            // Undocumented NOPs (absolute: 3 byte, 4 cycle)
+            0x0C => inst_fetch!(abs; _data, { }),
+            // Undocumented NOPs (absolute-x: 3 byte, 4/5 cycle)
+            0x1C => inst_fetch!(abs, x; _data, { }),
+            0x3C => inst_fetch!(abs, x; _data, { }),
+            0x5C => inst_fetch!(abs, x; _data, { }),
+            0x7C => inst_fetch!(abs, x; _data, { }),
+            0xDC => inst_fetch!(abs, x; _data, { }),
+            0xFC => inst_fetch!(abs, x; _data, { }),
             _ => panic!("invalid instruction: 0x{:02X}", opcode)
         }
     }
