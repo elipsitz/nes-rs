@@ -68,7 +68,7 @@ fn address_zero_page_indexed(s: &mut State, index: u8) -> u16 {
 // Absolute indexed: 2 bytes describe an address, plus the index.
 fn address_absolute_indexed(s: &mut State, index: u8) -> (u16, u16) {
     let base = address_absolute(s);
-    let fixed = base + (index as u16);
+    let fixed = base.wrapping_add(index as u16);
     let initial = (base & 0xFF00) | (fixed & 0xFF);
     (initial, fixed)
 }
@@ -78,7 +78,7 @@ fn address_indexed_indirect(s: &mut State) -> u16 {
     let base = s.cpu_read(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     s.cpu.cycles += 1; // Dummy read of base.
-    let address = (base + (s.cpu.x as u16)) & 0xFF;
+    let address = base.wrapping_add(s.cpu.x as u16) & 0xFF;
     read_u16_wrapped(s, address)
 }
 
@@ -87,7 +87,7 @@ fn address_indirect_indexed(s: &mut State) -> (u16, u16) {
     let ptr = s.cpu_read(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     let base = read_u16_wrapped(s, ptr);
-    let fixed = base + (s.cpu.y as u16);
+    let fixed = base.wrapping_add(s.cpu.y as u16);
     let initial = (base & 0xFF00) | (fixed & 0xFF);
     (initial, fixed)
 }
