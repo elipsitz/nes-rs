@@ -338,7 +338,21 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xD0 => do_branch(s, !s.cpu.status_z),
             // BPL - Branch if Positive
             0x10 => do_branch(s, !s.cpu.status_n),
-            // TODO: BRK - Force Interrupt
+            // BRK - Force Interrupt
+            0x00 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu.pc += 1;
+                let pc = s.cpu.pc;
+                let hi = (pc >> 8) & 0xFF;
+                let lo = pc & 0xFF;
+                stack_push(s, hi as u8);
+                stack_push(s, lo as u8);
+                stack_push(s, status_pack(s, true));
+                let lo = s.cpu_read(0xFFFE) as u16;
+                let hi = s.cpu_read(0xFFFF) as u16;
+                s.cpu.pc = (hi << 8) | lo;
+                s.cpu.status_i = true;
+            }
             // BVC - Branch if Overflow Clear
             0x50 => do_branch(s, !s.cpu.status_v),
             // BVS - Branch if Overflow Set
@@ -460,7 +474,16 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             }
             // TODO: ROL - Rotate Left
             // TODO: ROR - Rotate Right
-            // TODO: RTI - Return from Interrupt
+            // RTI - Return from Interrupt
+            0x40 => {
+                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu.cycles += 1;
+                let status = stack_pull(s);
+                status_unpack(s, status);
+                let lo = stack_pull(s) as u16;
+                let hi = stack_pull(s) as u16;
+                s.cpu.pc = (hi << 8) | lo;
+            }
             // RTS - Return from Subroutine
             0x60 => {
                 s.cpu_read(s.cpu.pc); // Dummy read.
