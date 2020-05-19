@@ -99,6 +99,13 @@ fn compute_adc(s: &mut State, data: u8) -> u8 {
     (result & 0xFF) as u8
 }
 
+// Compute Bit Test
+fn compute_bit(s: &mut State, data: u8) {
+    s.cpu.status_z = (s.cpu.a & data) == 0;
+    s.cpu.status_v = (data & 0x40) > 0;
+    s.cpu.status_n = (data & 0x80) > 0;
+}
+
 fn do_branch(s: &mut State, condition: bool) {
     let offset = address_immediate(s) as i8;
     if condition {
@@ -113,44 +120,35 @@ fn do_branch(s: &mut State, condition: bool) {
 }
 
 pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
-    // Read instruction: args: addressing mode, destination register, arithmetic expression
-    macro_rules! inst_read {
-        (imm; $data:ident, $reg:ident, $expr:block) => {
+    macro_rules! inst_fetch {
+        (imm; $data:ident, $expr:block) => {
             {
                 let $data = address_immediate(s);
-                let result = $expr;
-                s.cpu.$reg = result;
-                set_status_load(s, result);
+                $expr
             }
         };
-        (zero; $data:ident, $reg:ident, $expr:block) => {
+        (zero; $data:ident, $expr:block) => {
             {
                 let addr = address_zero_page(s);
                 let $data = s.cpu_read(addr);
-                let result = $expr;
-                s.cpu.$reg = result;
-                set_status_load(s, result);
+                $expr
             }
         };
-        (zero, $idx_reg:ident; $data:ident, $reg:ident, $expr:block) => {
+        (zero, $idx_reg:ident; $data:ident, $expr:block) => {
             {
                 let addr = address_zero_page_indexed(s, s.cpu.$idx_reg);
                 let $data = s.cpu_read(addr);
-                let result = $expr;
-                s.cpu.$reg = result;
-                set_status_load(s, result);
+                $expr
             }
         };
-        (abs; $data:ident, $reg:ident, $expr:block) => {
+        (abs; $data:ident, $expr:block) => {
             {
                 let addr = address_absolute(s);
                 let $data = s.cpu_read(addr);
-                let result = $expr;
-                s.cpu.$reg = result;
-                set_status_load(s, result);
+                $expr
             }
         };
-        (abs, $idx_reg:ident; $data:ident, $reg:ident, $expr:block) => {
+        (abs, $idx_reg:ident; $data:ident, $expr:block) => {
             {
                 let (initial, fixed) = address_absolute_indexed(s, s.cpu.$idx_reg);
                 let $data = if initial == fixed {
@@ -159,23 +157,19 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                     s.cpu_read(initial);
                     s.cpu_read(fixed)
                 };
-                let result = $expr;
-                s.cpu.$reg = result;
-                set_status_load(s, result);
+                $expr
             }
         };
         // Indexed Indirect (Indirect,X)
-        (indirect, x; $data:ident, $reg:ident, $expr:block) => {
+        (indirect, x; $data:ident, $expr:block) => {
             {
                 let address = address_indexed_indirect(s);
                 let $data = s.cpu_read(address);
-                let result = $expr;
-                s.cpu.$reg = result;
-                set_status_load(s, result);
+                $expr
             }
         };
         // Indirect Indexed (Indirect),Y
-        (indirect, y; $data:ident, $reg:ident, $expr:block) => {
+        (indirect, y; $data:ident, $expr:block) => {
             {
                 let (initial, fixed) = address_indirect_indexed(s);
                 let $data = if initial == fixed {
@@ -184,7 +178,22 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                     s.cpu_read(initial);
                     s.cpu_read(fixed)
                 };
-                let result = $expr;
+                $expr
+            }
+        };
+    }
+
+    macro_rules! inst_load {
+        ($mode:tt; $data:ident, $reg:ident, $expr:block) => {
+            {
+                let result = inst_fetch!($mode; $data, $expr);
+                s.cpu.$reg = result;
+                set_status_load(s, result);
+            }
+        };
+        ($mode:tt, $idx_reg:tt; $data:ident, $reg:ident, $expr:block) => {
+            {
+                let result = inst_fetch!($mode, $idx_reg; $data, $expr);
                 s.cpu.$reg = result;
                 set_status_load(s, result);
             }
@@ -253,23 +262,23 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
 
         match opcode {
             // ADC - Add with Carry
-            0x69 => inst_read!(imm; data, a, { compute_adc(s, data) }),
-            0x65 => inst_read!(zero; data, a, { compute_adc(s, data) }),
-            0x75 => inst_read!(zero, x; data, a, { compute_adc(s, data) }),
-            0x6D => inst_read!(abs; data, a, { compute_adc(s, data) }),
-            0x7D => inst_read!(abs, x; data, a, { compute_adc(s, data) }),
-            0x79 => inst_read!(abs, y; data, a, { compute_adc(s, data) }),
-            0x61 => inst_read!(indirect, x; data, a, { compute_adc(s, data) }),
-            0x71 => inst_read!(indirect, y; data, a, { compute_adc(s, data) }),
+            0x69 => inst_load!(imm; data, a, { compute_adc(s, data) }),
+            0x65 => inst_load!(zero; data, a, { compute_adc(s, data) }),
+            0x75 => inst_load!(zero, x; data, a, { compute_adc(s, data) }),
+            0x6D => inst_load!(abs; data, a, { compute_adc(s, data) }),
+            0x7D => inst_load!(abs, x; data, a, { compute_adc(s, data) }),
+            0x79 => inst_load!(abs, y; data, a, { compute_adc(s, data) }),
+            0x61 => inst_load!(indirect, x; data, a, { compute_adc(s, data) }),
+            0x71 => inst_load!(indirect, y; data, a, { compute_adc(s, data) }),
             // AND - Logical AND
-            0x29 => inst_read!(imm; data, a, { s.cpu.a & data }),
-            0x25 => inst_read!(zero; data, a, { s.cpu.a & data }),
-            0x35 => inst_read!(zero, x; data, a, { s.cpu.a & data }),
-            0x2D => inst_read!(abs; data, a, { s.cpu.a & data }),
-            0x3D => inst_read!(abs, x; data, a, { s.cpu.a & data }),
-            0x39 => inst_read!(abs, y; data, a, { s.cpu.a & data }),
-            0x21 => inst_read!(indirect, x; data, a, { s.cpu.a & data }),
-            0x31 => inst_read!(indirect, y; data, a, { s.cpu.a & data }),
+            0x29 => inst_load!(imm; data, a, { s.cpu.a & data }),
+            0x25 => inst_load!(zero; data, a, { s.cpu.a & data }),
+            0x35 => inst_load!(zero, x; data, a, { s.cpu.a & data }),
+            0x2D => inst_load!(abs; data, a, { s.cpu.a & data }),
+            0x3D => inst_load!(abs, x; data, a, { s.cpu.a & data }),
+            0x39 => inst_load!(abs, y; data, a, { s.cpu.a & data }),
+            0x21 => inst_load!(indirect, x; data, a, { s.cpu.a & data }),
+            0x31 => inst_load!(indirect, y; data, a, { s.cpu.a & data }),
             // TODO: ASL - Arithmetic Shift Left
             // BCC - Branch if Carry Clear
             0x90 => do_branch(s, !s.cpu.status_c),
@@ -277,7 +286,9 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xB0 => do_branch(s, s.cpu.status_c),
             // BEQ - Branch if Equal
             0xF0 => do_branch(s, s.cpu.status_z),
-            // TODO: BIT - Bit Test
+            // BIT - Bit Test
+            0x24 => inst_fetch!(zero; data, { compute_bit(s, data) }),
+            0x2C => inst_fetch!(abs; data, { compute_bit(s, data) }),
             // BMI - Branch if Minus
             0x30 => do_branch(s, s.cpu.status_n),
             // BNE - Branch if Not Equal
@@ -322,26 +333,26 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 s.cpu.pc = addr;
             }
             // LDA - Load Accumulator
-            0xA9 => inst_read!(imm; data, a, { data }),
-            0xA5 => inst_read!(zero; data, a, { data }),
-            0xB5 => inst_read!(zero, x; data, a, { data }),
-            0xAD => inst_read!(abs; data, a, { data }),
-            0xBD => inst_read!(abs, x; data, a, { data }),
-            0xB9 => inst_read!(abs, y; data, a, { data }),
-            0xA1 => inst_read!(indirect, x; data, a, { data }),
-            0xB1 => inst_read!(indirect, y; data, a, { data }),
+            0xA9 => inst_load!(imm; data, a, { data }),
+            0xA5 => inst_load!(zero; data, a, { data }),
+            0xB5 => inst_load!(zero, x; data, a, { data }),
+            0xAD => inst_load!(abs; data, a, { data }),
+            0xBD => inst_load!(abs, x; data, a, { data }),
+            0xB9 => inst_load!(abs, y; data, a, { data }),
+            0xA1 => inst_load!(indirect, x; data, a, { data }),
+            0xB1 => inst_load!(indirect, y; data, a, { data }),
             // LDX - Load X Register
-            0xA2 => inst_read!(imm; data, x, { data }),
-            0xA6 => inst_read!(zero; data, x, { data }),
-            0xB6 => inst_read!(zero, y; data, x, { data }),
-            0xAE => inst_read!(abs; data, x, { data }),
-            0xBE => inst_read!(abs, y; data, x, { data }),
+            0xA2 => inst_load!(imm; data, x, { data }),
+            0xA6 => inst_load!(zero; data, x, { data }),
+            0xB6 => inst_load!(zero, y; data, x, { data }),
+            0xAE => inst_load!(abs; data, x, { data }),
+            0xBE => inst_load!(abs, y; data, x, { data }),
             // LDY - Load Y Register
-            0xA0 => inst_read!(imm; data, y, { data }),
-            0xA4 => inst_read!(zero; data, y, { data }),
-            0xB4 => inst_read!(zero, x; data, y, { data }),
-            0xAC => inst_read!(abs; data, y, { data }),
-            0xBC => inst_read!(abs, x; data, y, { data }),
+            0xA0 => inst_load!(imm; data, y, { data }),
+            0xA4 => inst_load!(zero; data, y, { data }),
+            0xB4 => inst_load!(zero, x; data, y, { data }),
+            0xAC => inst_load!(abs; data, y, { data }),
+            0xBC => inst_load!(abs, x; data, y, { data }),
             // TODO: LSR - Logical Shift Right
             // NOP - No Operation
             0xEA => { s.cpu.cycles += 1; }

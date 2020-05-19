@@ -52,7 +52,7 @@ impl Nes {
     }
 
     pub fn run(&mut self) {
-        cpu::emulate(&mut self.state, 100);
+        cpu::emulate(&mut self.state, 1000);
     }
 }
 
