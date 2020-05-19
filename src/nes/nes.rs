@@ -93,10 +93,12 @@ impl State {
             _ => panic!("out of bounds read")
         };
         self.cpu.cycles += 1;
+        // eprintln!("##### read from 0x{:04X}: val: {:02X}. cycle: {}", addr, data, self.cpu.cycles);
         data
     }
 
     pub fn cpu_write(&mut self, addr: u16, val: u8) {
+        // eprintln!("##### store to 0x{:04X}: val: {}. cycle: {}", addr, val, self.cpu.cycles);
         // https://wiki.nesdev.com/w/index.php/CPU_memory_map
         match addr {
             0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize] = val,

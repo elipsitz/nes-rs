@@ -21,6 +21,14 @@ fn status_unpack(s: &mut State, packed: u8) {
     s.cpu.status_n = packed & (1 << 7) > 0;
 }
 
+// Reads the lo byte from `address` and the hi byte from `address + 1`, wrapped around on the lower byte.
+fn read_u16_wrapped(s: &mut State, address_lo: u16) -> u16 {
+    let address_hi = (address_lo & 0xFF00) | ((address_lo + 1) & 0x00FF);
+    let lo = s.cpu_read(address_lo) as u16;
+    let hi = s.cpu_read(address_hi) as u16;
+    (hi << 8) | lo
+}
+
 // Absolute addressing: 2 bytes describe a full 16-bit address to use.
 fn address_absolute(s: &mut State) -> u16 {
     let lo = s.cpu_read(s.cpu.pc);
@@ -32,9 +40,7 @@ fn address_absolute(s: &mut State) -> u16 {
 // Indirect addressing: 2 bytes describe an address that contains the full 16-bit address to use.
 fn address_indirect(s: &mut State) -> u16 {
     let address = address_absolute(s);
-    let lo = s.cpu_read(address);
-    let hi = s.cpu_read(address + 1);
-    (hi as u16) << 8 | (lo as u16)
+    read_u16_wrapped(s, address)
 }
 
 // Immediate addressing: 1 byte contains the *value* to use.
@@ -72,20 +78,15 @@ fn address_indexed_indirect(s: &mut State) -> u16 {
     let base = s.cpu_read(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     s.cpu.cycles += 1; // Dummy read of base.
-    let address = (base + (s.cpu.x as u16)) & 0x00FF;
-    let lo = s.cpu_read(address);
-    let hi = s.cpu_read(address + 1);
-    (hi as u16) << 8 | (lo as u16)
+    let address = (base + (s.cpu.x as u16)) & 0xFF;
+    read_u16_wrapped(s, address)
 }
 
 // Indirect indexed: 1 byte is pointer to zero page, that address (+ Y) is used.
 fn address_indirect_indexed(s: &mut State) -> (u16, u16) {
     let ptr = s.cpu_read(s.cpu.pc) as u16;
     s.cpu.pc += 1;
-
-    let lo = s.cpu_read(ptr);
-    let hi = s.cpu_read(ptr + 1);
-    let base = (hi as u16) << 8 | (lo as u16);
+    let base = read_u16_wrapped(s, ptr);
     let fixed = base + (s.cpu.y as u16);
     let initial = (base & 0xFF00) | (fixed & 0xFF);
     (initial, fixed)
