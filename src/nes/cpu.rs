@@ -133,6 +133,32 @@ fn compute_cmp(s: &mut State, z: u8, m: u8) {
     s.cpu.status_n = (z.wrapping_sub(m) & 0x80) > 0;
 }
 
+// Compute Logical Shift Right
+fn compute_lsr(s: &mut State, data: u8) -> u8 {
+    s.cpu.status_c = (data & 1) != 0;
+    data >> 1
+}
+
+// Compute Arithmetic Shift Left
+fn compute_asl(s: &mut State, data: u8) -> u8 {
+    s.cpu.status_c = (data & 0x80) != 0;
+    data << 1
+}
+
+// Compute Rotate Left
+fn compute_rol(s: &mut State, data: u8) -> u8 {
+    let result = (data << 1) | (s.cpu.status_c as u8);
+    s.cpu.status_c = (data & 0x80) != 0;
+    result
+}
+
+// Compute Rotate Right
+fn compute_ror(s: &mut State, data: u8) -> u8 {
+    let result = (data >> 1) | ((s.cpu.status_c as u8) << 7);
+    s.cpu.status_c = (data & 0x1) != 0;
+    result
+}
+
 fn do_branch(s: &mut State, condition: bool) {
     let offset = address_immediate(s) as i8;
     if condition {
@@ -292,6 +318,59 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
         };
     }
 
+    macro_rules! inst_modify {
+        (acc; $data:ident, $expr:block) => {
+            {
+                s.cpu_read(s.cpu.pc); // Dummy read
+                let $data = s.cpu.a;
+                let result = $expr;
+                s.cpu.a = result;
+                set_status_load(s, result);
+            }
+        };
+        (zero; $data:ident, $expr:block) => {
+            {
+                let addr = address_zero_page(s);
+                let $data = s.cpu_read(addr);
+                s.cpu.cycles += 1; // Dummy write (to RAM).
+                let result = $expr;
+                s.cpu_write(addr, result);
+                set_status_load(s, result);
+            }
+        };
+        (zero, $idx_reg:ident; $data:ident, $expr:block) => {
+            {
+                let addr = address_zero_page_indexed(s, s.cpu.$idx_reg);
+                let $data = s.cpu_read(addr);
+                s.cpu.cycles += 1; // Dummy write (to RAM).
+                let result = $expr;
+                s.cpu_write(addr, result);
+                set_status_load(s, result);
+            }
+        };
+        (abs; $data:ident, $expr:block) => {
+            {
+                let addr = address_absolute(s);
+                let $data = s.cpu_read(addr);
+                s.cpu_write(addr, $data);
+                let result = $expr;
+                s.cpu_write(addr, result);
+                set_status_load(s, result);
+            }
+        };
+        (abs, $idx_reg:ident; $data:ident, $expr:block) => {
+            {
+                let (initial, fixed) = address_absolute_indexed(s, s.cpu.$idx_reg);
+                s.cpu_read(initial);
+                let $data = s.cpu_read(fixed);
+                let result = $expr;
+                s.cpu_write(fixed, result);
+                s.cpu_write(fixed, result);
+                set_status_load(s, result);
+            }
+        };
+    }
+
     let start_cycles = s.cpu.cycles;
     let end_cycles = start_cycles + min_cycles;
     while s.cpu.cycles < end_cycles {
@@ -322,7 +401,12 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x39 => inst_load!(abs, y; data, a, { s.cpu.a & data }),
             0x21 => inst_load!(indirect, x; data, a, { s.cpu.a & data }),
             0x31 => inst_load!(indirect, y; data, a, { s.cpu.a & data }),
-            // TODO: ASL - Arithmetic Shift Left
+            // ASL - Arithmetic Shift Left
+            0x0A => inst_modify!(acc; data, { compute_asl(s, data) }),
+            0x06 => inst_modify!(zero; data, { compute_asl(s, data) }),
+            0x16 => inst_modify!(zero, x; data, { compute_asl(s, data) }),
+            0x0E => inst_modify!(abs; data, { compute_asl(s, data) }),
+            0x1E => inst_modify!(abs, x; data, { compute_asl(s, data) }),
             // BCC - Branch if Carry Clear
             0x90 => do_branch(s, !s.cpu.status_c),
             // BCS - Branch if Carry Set
@@ -436,7 +520,12 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xB4 => inst_load!(zero, x; data, y, { data }),
             0xAC => inst_load!(abs; data, y, { data }),
             0xBC => inst_load!(abs, x; data, y, { data }),
-            // TODO: LSR - Logical Shift Right
+            // LSR - Logical Shift Right
+            0x4A => inst_modify!(acc; data, { compute_lsr(s, data) }),
+            0x46 => inst_modify!(zero; data, { compute_lsr(s, data) }),
+            0x56 => inst_modify!(zero, x; data, { compute_lsr(s, data) }),
+            0x4E => inst_modify!(abs; data, { compute_lsr(s, data) }),
+            0x5E => inst_modify!(abs, x; data, { compute_lsr(s, data) }),
             // NOP - No Operation
             0xEA => { s.cpu.cycles += 1; }
             // ORA - Logical Inclusive OR
@@ -472,8 +561,18 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 let status = stack_pull(s);
                 status_unpack(s, status);
             }
-            // TODO: ROL - Rotate Left
-            // TODO: ROR - Rotate Right
+            // ROL - Rotate Left
+            0x2A => inst_modify!(acc; data, { compute_rol(s, data) }),
+            0x26 => inst_modify!(zero; data, { compute_rol(s, data) }),
+            0x36 => inst_modify!(zero, x; data, { compute_rol(s, data) }),
+            0x2E => inst_modify!(abs; data, { compute_rol(s, data) }),
+            0x3E => inst_modify!(abs, x; data, { compute_rol(s, data) }),
+            // ROR - Rotate Right
+            0x6A => inst_modify!(acc; data, { compute_ror(s, data) }),
+            0x66 => inst_modify!(zero; data, { compute_ror(s, data) }),
+            0x76 => inst_modify!(zero, x; data, { compute_ror(s, data) }),
+            0x6E => inst_modify!(abs; data, { compute_ror(s, data) }),
+            0x7E => inst_modify!(abs, x; data, { compute_ror(s, data) }),
             // RTI - Return from Interrupt
             0x40 => {
                 s.cpu_read(s.cpu.pc); // Dummy read.
