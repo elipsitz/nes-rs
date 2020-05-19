@@ -119,6 +119,16 @@ fn do_branch(s: &mut State, condition: bool) {
     }
 }
 
+fn stack_push(s: &mut State, data: u8) {
+    s.cpu_write(0x0100 | (s.cpu.sp as u16), data);
+    s.cpu.sp -= 1;
+}
+
+fn stack_pull(s: &mut State) -> u8 {
+    s.cpu.sp += 1;
+    s.cpu_read(0x0100 | (s.cpu.sp as u16))
+}
+
 pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     macro_rules! inst_fetch {
         (imm; $data:ident, $expr:block) => {
@@ -325,10 +335,10 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x20 => {
                 let addr = address_absolute(s);
                 let pc_store = s.cpu.pc - 1;
-                s.cpu_write(0x0100 | (s.cpu.sp as u16), ((pc_store >> 8) & 0xFF) as u8);
-                s.cpu.sp -= 1;
-                s.cpu_write(0x0100 | (s.cpu.sp as u16), (pc_store & 0xFF) as u8);
-                s.cpu.sp -= 1;
+                let hi = (pc_store >> 8) & 0xFF;
+                let lo = pc_store & 0xFF;
+                stack_push(s, hi as u8);
+                stack_push(s, lo as u8);
                 s.cpu.cycles += 1;
                 s.cpu.pc = addr;
             }
@@ -367,11 +377,9 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             // RTS - Return from Subroutine
             0x60 => {
                 s.cpu_read(s.cpu.pc); // Dummy read.
-                s.cpu.sp += 1;
                 s.cpu.cycles += 1;
-                let lo = s.cpu_read(0x0100 | (s.cpu.sp as u16)) as u16;
-                s.cpu.sp += 1;
-                let hi = s.cpu_read(0x0100 | (s.cpu.sp as u16)) as u16;
+                let lo = stack_pull(s) as u16;
+                let hi = stack_pull(s) as u16;
                 s.cpu.pc = (hi << 8) | lo;
                 s.cpu_read(s.cpu.pc); // Dummy read.
                 s.cpu.pc += 1;
