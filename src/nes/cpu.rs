@@ -467,7 +467,11 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xC0 => inst_fetch!(imm; data, { compute_cmp(s, s.cpu.y, data) }),
             0xC4 => inst_fetch!(zero; data, { compute_cmp(s, s.cpu.y, data) }),
             0xCC => inst_fetch!(abs; data, { compute_cmp(s, s.cpu.y, data) }),
-            // TODO: DEC - Decrement Memory
+            // DEC - Decrement Memory
+            0xC6 => inst_modify!(zero; data, { data.wrapping_sub(1) }),
+            0xD6 => inst_modify!(zero, x; data, { data.wrapping_sub(1) }),
+            0xCE => inst_modify!(abs; data, { data.wrapping_sub(1) }),
+            0xDE => inst_modify!(abs, x; data, { data.wrapping_sub(1) }),
             // DEX - Decrement X Register
             0xCA => { s.cpu_read(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, -1) }
             // DEY - Decrement Y Register
@@ -481,7 +485,11 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x59 => inst_load!(abs, y; data, a, { s.cpu.a ^ data }),
             0x41 => inst_load!(indirect, x; data, a, { s.cpu.a ^ data }),
             0x51 => inst_load!(indirect, y; data, a, { s.cpu.a ^ data }),
-            // TODO: INC - Increment Memory
+            // INC - Increment Memory
+            0xE6 => inst_modify!(zero; data, { data.wrapping_add(1) }),
+            0xF6 => inst_modify!(zero, x; data, { data.wrapping_add(1) }),
+            0xEE => inst_modify!(abs; data, { data.wrapping_add(1) }),
+            0xFE => inst_modify!(abs, x; data, { data.wrapping_add(1) }),
             // INX - Increment X Register
             0xE8 => { s.cpu_read(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, 1) }
             // INY - Increment Y Register
