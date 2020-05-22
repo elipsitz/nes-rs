@@ -20,7 +20,9 @@ impl Nes {
             state: State::new(cart),
         };
         nes.state.cpu.cycles = 7;
-        nes.state.cpu.pc = 0xC000u16; // XXX: nestest auto mode
+        nes.state.cpu.pc = cpu::vector_reset(&mut nes.state);
+        println!("[nes] Reset to pc = {:#04X}", nes.state.cpu.pc);
+        // nes.state.cpu.pc = 0xC000u16; // nestest auto mode
         nes
     }
 
@@ -44,7 +46,7 @@ impl State {
         let data = match addr {
             0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize],
             0x4020..=0xFFFF => self.mapper.peek(addr),
-            _ => panic!("out of bounds read")
+            _ => panic!("unhandled read: {:#04X}", addr)
         };
         self.cpu.cycles += 1;
         // eprintln!("##### read from 0x{:04X}: val: {:02X}. cycle: {}", addr, data, self.cpu.cycles);
@@ -57,7 +59,7 @@ impl State {
         match addr {
             0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize] = val,
             0x4020..=0xFFFF => self.mapper.poke(addr, val),
-            _ => panic!("out of bounds read")
+            _ => panic!("unhandled write: {:#04X} (val {:#02X})", addr, val)
         }
         self.cpu.cycles += 1;
     }

@@ -63,6 +63,21 @@ fn status_unpack(s: &mut State, packed: u8) {
     s.cpu.status_n = packed & (1 << 7) > 0;
 }
 
+// Reads the NMI vector.
+pub fn _vector_nmi(s: &mut State) -> u16 {
+    (s.cpu_peek(0xFFFA) as u16) | ((s.cpu_peek(0xFFFB) as u16) << 8)
+}
+
+// Reads the Reset vector.
+pub fn vector_reset(s: &mut State) -> u16 {
+    (s.cpu_peek(0xFFFC) as u16) | ((s.cpu_peek(0xFFFD) as u16) << 8)
+}
+
+// Reads the BRK vector.
+pub fn vector_brk(s: &mut State) -> u16 {
+    (s.cpu_peek(0xFFFE) as u16) | ((s.cpu_peek(0xFFFF) as u16) << 8)
+}
+
 // Reads the lo byte from `address` and the hi byte from `address + 1`, wrapped around on the lower byte.
 fn read_u16_wrapped(s: &mut State, address_lo: u16) -> u16 {
     let address_hi = (address_lo & 0xFF00) | ((address_lo + 1) & 0x00FF);
@@ -475,9 +490,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 stack_push(s, hi as u8);
                 stack_push(s, lo as u8);
                 stack_push(s, status_pack(s, true));
-                let lo = s.cpu_peek(0xFFFE) as u16;
-                let hi = s.cpu_peek(0xFFFF) as u16;
-                s.cpu.pc = (hi << 8) | lo;
+                s.cpu.pc = vector_brk(s);
                 s.cpu.status_i = true;
             }
             // BVC - Branch if Overflow Clear
