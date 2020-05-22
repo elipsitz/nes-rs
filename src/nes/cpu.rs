@@ -1,5 +1,47 @@
 use super::nes::State;
 
+pub struct CpuState {
+    pub a: u8,
+    pub x: u8,
+    pub y: u8,
+    pub pc: u16,
+    pub sp: u8,
+
+    // Carry
+    pub status_c: bool,
+    // Zero
+    pub status_z: bool,
+    // Interrupt Disable
+    pub status_i: bool,
+    // Decimal
+    pub status_d: bool,
+    // Overflow
+    pub status_v: bool,
+    // Negative
+    pub status_n: bool,
+
+    pub cycles: u64,
+}
+
+impl CpuState {
+    pub fn new() -> CpuState {
+        CpuState {
+            a: 0,
+            x: 0,
+            y: 0,
+            pc: 0,
+            sp: 0xFD,
+            cycles: 0,
+            status_c: false,
+            status_z: false,
+            status_i: true,
+            status_d: false,
+            status_v: false,
+            status_n: false,
+        }
+    }
+}
+
 fn status_pack(s: &State, status_b: bool) -> u8 {
     0
         | (s.cpu.status_c as u8) << 0

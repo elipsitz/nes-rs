@@ -1,6 +1,7 @@
 use super::cartridge::Cartridge;
 use super::mapper;
 use super::cpu;
+use super::ppu;
 
 pub struct Nes {
     pub state: State,
@@ -8,37 +9,9 @@ pub struct Nes {
 
 pub struct State {
     pub ram: [u8; 2048],
-    pub cpu: CpuState,
-    pub ppu: PpuState,
+    pub cpu: cpu::CpuState,
+    pub ppu: ppu::PpuState,
     pub mapper: Box<dyn mapper::Mapper>,
-}
-
-#[derive(Default)]
-pub struct CpuState {
-    pub a: u8,
-    pub x: u8,
-    pub y: u8,
-    pub pc: u16,
-    pub sp: u8,
-
-    // Carry
-    pub status_c: bool,
-    // Zero
-    pub status_z: bool,
-    // Interrupt Disable
-    pub status_i: bool,
-    // Decimal
-    pub status_d: bool,
-    // Overflow
-    pub status_v: bool,
-    // Negative
-    pub status_n: bool,
-
-    pub cycles: u64,
-}
-
-#[derive(Default)]
-pub struct PpuState {
 }
 
 impl Nes {
@@ -56,31 +29,12 @@ impl Nes {
     }
 }
 
-impl CpuState {
-    pub fn new() -> CpuState {
-        CpuState {
-            a: 0,
-            x: 0,
-            y: 0,
-            pc: 0,
-            sp: 0xFD,
-            cycles: 0,
-            status_c: false,
-            status_z: false,
-            status_i: true,
-            status_d: false,
-            status_v: false,
-            status_n: false,
-        }
-    }
-}
-
 impl State {
     pub fn new(cart: Cartridge) -> State {
         State {
             ram: [0; 2048],
-            cpu: CpuState::new(),
-            ppu: PpuState::default(),
+            cpu: cpu::CpuState::new(),
+            ppu: ppu::PpuState::new(),
             mapper: mapper::make_mapper(cart),
         }
     }
