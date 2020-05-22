@@ -11,7 +11,7 @@ fn main() {
     }
 
     let rom_path: &str = &args[1];
-    println!("Loading rom at path: {}", rom_path);
+    println!("[main] Loading rom at path: {}", rom_path);
 
     let cart = nes::cartridge::Cartridge::load(rom_path);
     let mut nes = nes::nes::Nes::new(cart);
