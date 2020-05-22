@@ -6,9 +6,10 @@ pub trait Mapper {
 }
 
 pub fn make_mapper(cart: Cartridge) -> Box<dyn Mapper> {
-    Box::new(Mapper0 {
-        cart
-    })
+    match cart.mapper_id {
+        0 => Box::new(Mapper0 { cart }),
+        _ => panic!("Unknown mapper ID: {}", cart.mapper_id)
+    }
 }
 
 pub struct Mapper0 {
