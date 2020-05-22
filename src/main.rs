@@ -15,5 +15,5 @@ fn main() {
 
     let cart = nes::cartridge::Cartridge::load(rom_path);
     let mut nes = nes::nes::Nes::new(cart);
-    nes.run();
+    nes.emulate_frame();
 }

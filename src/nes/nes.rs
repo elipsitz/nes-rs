@@ -26,8 +26,12 @@ impl Nes {
         nes
     }
 
-    pub fn run(&mut self) {
-        cpu::emulate(&mut self.state, 26555);
+    pub fn emulate_frame(&mut self) {
+        let start_frame = self.state.ppu.frames;
+        while self.state.ppu.frames == start_frame {
+            let cycles = cpu::emulate(&mut self.state, 1);
+            ppu::emulate(&mut self.state, cycles);
+        }
     }
 }
 
