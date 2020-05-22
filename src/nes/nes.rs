@@ -48,7 +48,8 @@ impl State {
     pub fn cpu_peek(&mut self, addr: u16) -> u8 {
         // https://wiki.nesdev.com/w/index.php/CPU_memory_map
         let data = match addr {
-            0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize],
+            0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize],
+            0x2000..=0x3FFF => ppu::peek_register(self, addr & 0x7),
             0x4020..=0xFFFF => self.mapper.peek(addr),
             _ => panic!("unhandled read: {:#04X}", addr)
         };
@@ -61,7 +62,8 @@ impl State {
         // eprintln!("##### store to 0x{:04X}: val: {}. cycle: {}", addr, val, self.cpu.cycles);
         // https://wiki.nesdev.com/w/index.php/CPU_memory_map
         match addr {
-            0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize] = val,
+            0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize] = val,
+            0x2000..=0x3FFF => ppu::poke_register(self, addr & 0x7, val),
             0x4020..=0xFFFF => self.mapper.poke(addr, val),
             _ => panic!("unhandled write: {:#04X} (val {:#02X})", addr, val)
         }
