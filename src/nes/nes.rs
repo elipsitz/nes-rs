@@ -39,11 +39,11 @@ impl State {
         }
     }
 
-    pub fn cpu_read(&mut self, addr: u16) -> u8 {
+    pub fn cpu_peek(&mut self, addr: u16) -> u8 {
         // https://wiki.nesdev.com/w/index.php/CPU_memory_map
         let data = match addr {
             0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize],
-            0x4020..=0xFFFF => self.mapper.read(addr),
+            0x4020..=0xFFFF => self.mapper.peek(addr),
             _ => panic!("out of bounds read")
         };
         self.cpu.cycles += 1;
@@ -51,12 +51,12 @@ impl State {
         data
     }
 
-    pub fn cpu_write(&mut self, addr: u16, val: u8) {
+    pub fn cpu_poke(&mut self, addr: u16, val: u8) {
         // eprintln!("##### store to 0x{:04X}: val: {}. cycle: {}", addr, val, self.cpu.cycles);
         // https://wiki.nesdev.com/w/index.php/CPU_memory_map
         match addr {
             0x0000..=0x17FF => self.ram[(addr & 0x7FF) as usize] = val,
-            0x4020..=0xFFFF => self.mapper.write(addr, val),
+            0x4020..=0xFFFF => self.mapper.poke(addr, val),
             _ => panic!("out of bounds read")
         }
         self.cpu.cycles += 1;

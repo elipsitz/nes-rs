@@ -1,8 +1,8 @@
 use super::cartridge::Cartridge;
 
 pub trait Mapper {
-    fn read(&mut self, addr: u16) -> u8;
-    fn write(&mut self, addr: u16, val: u8);
+    fn peek(&mut self, addr: u16) -> u8;
+    fn poke(&mut self, addr: u16, val: u8);
 }
 
 pub fn make_mapper(cart: Cartridge) -> Box<dyn Mapper> {
@@ -17,7 +17,7 @@ pub struct Mapper0 {
 }
 
 impl Mapper for Mapper0 {
-    fn read(&mut self, addr: u16) -> u8 {
+    fn peek(&mut self, addr: u16) -> u8 {
         match addr {
             0x8000..=0xFFFF => {
                 let offset = addr - 0x8000;
@@ -28,6 +28,6 @@ impl Mapper for Mapper0 {
         }
     }
 
-    fn write(&mut self, _addr: u16, _val: u8) {
+    fn poke(&mut self, _addr: u16, _val: u8) {
     }
 }

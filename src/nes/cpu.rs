@@ -66,15 +66,15 @@ fn status_unpack(s: &mut State, packed: u8) {
 // Reads the lo byte from `address` and the hi byte from `address + 1`, wrapped around on the lower byte.
 fn read_u16_wrapped(s: &mut State, address_lo: u16) -> u16 {
     let address_hi = (address_lo & 0xFF00) | ((address_lo + 1) & 0x00FF);
-    let lo = s.cpu_read(address_lo) as u16;
-    let hi = s.cpu_read(address_hi) as u16;
+    let lo = s.cpu_peek(address_lo) as u16;
+    let hi = s.cpu_peek(address_hi) as u16;
     (hi << 8) | lo
 }
 
 // Absolute addressing: 2 bytes describe a full 16-bit address to use.
 fn address_absolute(s: &mut State) -> u16 {
-    let lo = s.cpu_read(s.cpu.pc);
-    let hi = s.cpu_read(s.cpu.pc + 1);
+    let lo = s.cpu_peek(s.cpu.pc);
+    let hi = s.cpu_peek(s.cpu.pc + 1);
     s.cpu.pc += 2;
     (hi as u16) << 8 | (lo as u16)
 }
@@ -87,21 +87,21 @@ fn address_indirect(s: &mut State) -> u16 {
 
 // Immediate addressing: 1 byte contains the *value* to use.
 fn address_immediate(s: &mut State) -> u8 {
-    let data = s.cpu_read(s.cpu.pc);
+    let data = s.cpu_peek(s.cpu.pc);
     s.cpu.pc += 1;
     data
 }
 
 // Zero page addressing: 1 byte contains the address on the zero page to use.
 fn address_zero_page(s: &mut State) -> u16 {
-    let address = s.cpu_read(s.cpu.pc) as u16;
+    let address = s.cpu_peek(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     address
 }
 
 // Zero page indexed: 1 byte (+ index) contains the address *on the zero page* to use.
 fn address_zero_page_indexed(s: &mut State, index: u8) -> u16 {
-    let address = s.cpu_read(s.cpu.pc) as u16;
+    let address = s.cpu_peek(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     s.cpu.cycles += 1; // Dummy read
     (address + (index as u16)) & 0xFF
@@ -117,7 +117,7 @@ fn address_absolute_indexed(s: &mut State, index: u8) -> (u16, u16) {
 
 // Indexed indirect: 1 byte (+ X) is pointer to zero page, that address is used.
 fn address_indexed_indirect(s: &mut State) -> u16 {
-    let base = s.cpu_read(s.cpu.pc) as u16;
+    let base = s.cpu_peek(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     s.cpu.cycles += 1; // Dummy read of base.
     let address = base.wrapping_add(s.cpu.x as u16) & 0xFF;
@@ -126,7 +126,7 @@ fn address_indexed_indirect(s: &mut State) -> u16 {
 
 // Indirect indexed: 1 byte is pointer to zero page, that address (+ Y) is used.
 fn address_indirect_indexed(s: &mut State) -> (u16, u16) {
-    let ptr = s.cpu_read(s.cpu.pc) as u16;
+    let ptr = s.cpu_peek(s.cpu.pc) as u16;
     s.cpu.pc += 1;
     let base = read_u16_wrapped(s, ptr);
     let fixed = base.wrapping_add(s.cpu.y as u16);
@@ -222,13 +222,13 @@ fn do_wrapping_add(s: &mut State, data: u8, amount: i8) -> u8 {
 }
 
 fn stack_push(s: &mut State, data: u8) {
-    s.cpu_write(0x0100 | (s.cpu.sp as u16), data);
+    s.cpu_poke(0x0100 | (s.cpu.sp as u16), data);
     s.cpu.sp -= 1;
 }
 
 fn stack_pull(s: &mut State) -> u8 {
     s.cpu.sp += 1;
-    s.cpu_read(0x0100 | (s.cpu.sp as u16))
+    s.cpu_peek(0x0100 | (s.cpu.sp as u16))
 }
 
 pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
@@ -242,21 +242,21 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
         (zero; $data:ident, $expr:block) => {
             {
                 let addr = address_zero_page(s);
-                let $data = s.cpu_read(addr);
+                let $data = s.cpu_peek(addr);
                 $expr
             }
         };
         (zero, $idx_reg:ident; $data:ident, $expr:block) => {
             {
                 let addr = address_zero_page_indexed(s, s.cpu.$idx_reg);
-                let $data = s.cpu_read(addr);
+                let $data = s.cpu_peek(addr);
                 $expr
             }
         };
         (abs; $data:ident, $expr:block) => {
             {
                 let addr = address_absolute(s);
-                let $data = s.cpu_read(addr);
+                let $data = s.cpu_peek(addr);
                 $expr
             }
         };
@@ -264,10 +264,10 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             {
                 let (initial, fixed) = address_absolute_indexed(s, s.cpu.$idx_reg);
                 let $data = if initial == fixed {
-                    s.cpu_read(initial)
+                    s.cpu_peek(initial)
                 } else {
-                    s.cpu_read(initial);
-                    s.cpu_read(fixed)
+                    s.cpu_peek(initial);
+                    s.cpu_peek(fixed)
                 };
                 $expr
             }
@@ -276,7 +276,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
         (indirect, x; $data:ident, $expr:block) => {
             {
                 let address = address_indexed_indirect(s);
-                let $data = s.cpu_read(address);
+                let $data = s.cpu_peek(address);
                 $expr
             }
         };
@@ -285,10 +285,10 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             {
                 let (initial, fixed) = address_indirect_indexed(s);
                 let $data = if initial == fixed {
-                    s.cpu_read(initial)
+                    s.cpu_peek(initial)
                 } else {
-                    s.cpu_read(initial);
-                    s.cpu_read(fixed)
+                    s.cpu_peek(initial);
+                    s.cpu_peek(fixed)
                 };
                 $expr
             }
@@ -317,29 +317,29 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             {
                 let addr = address_zero_page(s);
                 let data = $expr;
-                s.cpu_write(addr, data);
+                s.cpu_poke(addr, data);
             }
         };
         (zero, $idx_reg:ident; $expr:block) => {
             {
                 let addr = address_zero_page_indexed(s, s.cpu.$idx_reg);
                 let data = $expr;
-                s.cpu_write(addr, data);
+                s.cpu_poke(addr, data);
             }
         };
         (abs; $expr:block) => {
             {
                 let addr = address_absolute(s);
                 let data = $expr;
-                s.cpu_write(addr, data);
+                s.cpu_poke(addr, data);
             }
         };
         (abs, $idx_reg:ident; $expr:block) => {
             {
                 let (initial, fixed) = address_absolute_indexed(s, s.cpu.$idx_reg);
-                s.cpu_read(initial);
+                s.cpu_peek(initial);
                 let data = $expr;
-                s.cpu_write(fixed, data);
+                s.cpu_poke(fixed, data);
             }
         };
         // Indexed Indirect (Indirect,X)
@@ -347,16 +347,16 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             {
                 let address = address_indexed_indirect(s);
                 let data = $expr;
-                s.cpu_write(address, data);
+                s.cpu_poke(address, data);
             }
         };
         // Indirect Indexed (Indirect),Y
         (indirect, y; $expr:block) => {
             {
                 let (initial, fixed) = address_indirect_indexed(s);
-                s.cpu_read(initial);
+                s.cpu_peek(initial);
                 let data = $expr;
-                s.cpu_write(fixed, data);
+                s.cpu_poke(fixed, data);
             }
         };
     }
@@ -364,7 +364,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     macro_rules! inst_modify {
         (acc; $data:ident, $expr:block) => {
             {
-                s.cpu_read(s.cpu.pc); // Dummy read
+                s.cpu_peek(s.cpu.pc); // Dummy read
                 let $data = s.cpu.a;
                 let result = $expr;
                 s.cpu.a = result;
@@ -374,41 +374,41 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
         (zero; $data:ident, $expr:block) => {
             {
                 let addr = address_zero_page(s);
-                let $data = s.cpu_read(addr);
+                let $data = s.cpu_peek(addr);
                 s.cpu.cycles += 1; // Dummy write (to RAM).
                 let result = $expr;
-                s.cpu_write(addr, result);
+                s.cpu_poke(addr, result);
                 set_status_load(s, result);
             }
         };
         (zero, $idx_reg:ident; $data:ident, $expr:block) => {
             {
                 let addr = address_zero_page_indexed(s, s.cpu.$idx_reg);
-                let $data = s.cpu_read(addr);
+                let $data = s.cpu_peek(addr);
                 s.cpu.cycles += 1; // Dummy write (to RAM).
                 let result = $expr;
-                s.cpu_write(addr, result);
+                s.cpu_poke(addr, result);
                 set_status_load(s, result);
             }
         };
         (abs; $data:ident, $expr:block) => {
             {
                 let addr = address_absolute(s);
-                let $data = s.cpu_read(addr);
-                s.cpu_write(addr, $data);
+                let $data = s.cpu_peek(addr);
+                s.cpu_poke(addr, $data);
                 let result = $expr;
-                s.cpu_write(addr, result);
+                s.cpu_poke(addr, result);
                 set_status_load(s, result);
             }
         };
         (abs, $idx_reg:ident; $data:ident, $expr:block) => {
             {
                 let (initial, fixed) = address_absolute_indexed(s, s.cpu.$idx_reg);
-                s.cpu_read(initial);
-                let $data = s.cpu_read(fixed);
+                s.cpu_peek(initial);
+                let $data = s.cpu_peek(fixed);
                 let result = $expr;
-                s.cpu_write(fixed, result);
-                s.cpu_write(fixed, result);
+                s.cpu_poke(fixed, result);
+                s.cpu_poke(fixed, result);
                 set_status_load(s, result);
             }
         };
@@ -418,7 +418,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     let end_cycles = start_cycles + min_cycles;
     while s.cpu.cycles < end_cycles {
         let cycle = s.cpu.cycles;
-        let opcode = s.cpu_read(s.cpu.pc);
+        let opcode = s.cpu_peek(s.cpu.pc);
         println!(
             "{:04X}  {:02X} ______________________________________ A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} PPU:_______ CYC:{}",
             s.cpu.pc, opcode, s.cpu.a, s.cpu.x, s.cpu.y, status_pack(s, false), s.cpu.sp, cycle
@@ -467,7 +467,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x10 => do_branch(s, !s.cpu.status_n),
             // BRK - Force Interrupt
             0x00 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 s.cpu.pc += 1;
                 let pc = s.cpu.pc;
                 let hi = (pc >> 8) & 0xFF;
@@ -475,8 +475,8 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
                 stack_push(s, hi as u8);
                 stack_push(s, lo as u8);
                 stack_push(s, status_pack(s, true));
-                let lo = s.cpu_read(0xFFFE) as u16;
-                let hi = s.cpu_read(0xFFFF) as u16;
+                let lo = s.cpu_peek(0xFFFE) as u16;
+                let hi = s.cpu_peek(0xFFFF) as u16;
                 s.cpu.pc = (hi << 8) | lo;
                 s.cpu.status_i = true;
             }
@@ -515,9 +515,9 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xCE => inst_modify!(abs; data, { data.wrapping_sub(1) }),
             0xDE => inst_modify!(abs, x; data, { data.wrapping_sub(1) }),
             // DEX - Decrement X Register
-            0xCA => { s.cpu_read(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, -1) }
+            0xCA => { s.cpu_peek(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, -1) }
             // DEY - Decrement Y Register
-            0x88 => { s.cpu_read(s.cpu.pc); s.cpu.y = do_wrapping_add(s, s.cpu.y, -1) }
+            0x88 => { s.cpu_peek(s.cpu.pc); s.cpu.y = do_wrapping_add(s, s.cpu.y, -1) }
             // EOR - Exclusive OR
             0x49 => inst_load!(imm; data, a, { s.cpu.a ^ data }),
             0x45 => inst_load!(zero; data, a, { s.cpu.a ^ data }),
@@ -533,9 +533,9 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0xEE => inst_modify!(abs; data, { data.wrapping_add(1) }),
             0xFE => inst_modify!(abs, x; data, { data.wrapping_add(1) }),
             // INX - Increment X Register
-            0xE8 => { s.cpu_read(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, 1) }
+            0xE8 => { s.cpu_peek(s.cpu.pc); s.cpu.x = do_wrapping_add(s, s.cpu.x, 1) }
             // INY - Increment Y Register
-            0xC8 => { s.cpu_read(s.cpu.pc); s.cpu.y = do_wrapping_add(s, s.cpu.y, 1) }
+            0xC8 => { s.cpu_peek(s.cpu.pc); s.cpu.y = do_wrapping_add(s, s.cpu.y, 1) }
             // JMP - Jump
             0x4C => s.cpu.pc = address_absolute(s),
             0x6C => s.cpu.pc = address_indirect(s),
@@ -590,24 +590,24 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x11 => inst_load!(indirect, y; data, a, { s.cpu.a | data }),
             // PHA - Push Accumulator
             0x48 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 stack_push(s, s.cpu.a);
             }
             // PHP - Push Processor Status
             0x08 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 stack_push(s, status_pack(s, true));
             }
             // PLA - Pull Accumulator
             0x68 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 s.cpu.cycles += 1;
                 s.cpu.a = stack_pull(s);
                 set_status_load(s, s.cpu.a);
             }
             // PLP - Pull Processor Status
             0x28 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 s.cpu.cycles += 1;
                 let status = stack_pull(s);
                 status_unpack(s, status);
@@ -626,7 +626,7 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x7E => inst_modify!(abs, x; data, { compute_ror(s, data) }),
             // RTI - Return from Interrupt
             0x40 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 s.cpu.cycles += 1;
                 let status = stack_pull(s);
                 status_unpack(s, status);
@@ -636,12 +636,12 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             }
             // RTS - Return from Subroutine
             0x60 => {
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 s.cpu.cycles += 1;
                 let lo = stack_pull(s) as u16;
                 let hi = stack_pull(s) as u16;
                 s.cpu.pc = (hi << 8) | lo;
-                s.cpu_read(s.cpu.pc); // Dummy read.
+                s.cpu_peek(s.cpu.pc); // Dummy read.
                 s.cpu.pc += 1;
             }
             // SBC - Subtract with Carry
@@ -692,15 +692,15 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
             0x44 => inst_fetch!(zero; _data, { }),
             0x64 => inst_fetch!(zero; _data, { }),
             // Undocumented NOPs (implied: 2 byte, 2 cycle)
-            0x80 => { s.cpu_read(s.cpu.pc); s.cpu.pc += 1; }
-            0x89 => { s.cpu_read(s.cpu.pc); s.cpu.pc += 1; }
+            0x80 => { s.cpu_peek(s.cpu.pc); s.cpu.pc += 1; }
+            0x89 => { s.cpu_peek(s.cpu.pc); s.cpu.pc += 1; }
             // Undocumented NOPs (implied: 1 byte, 2 cycle)
-            0x1A => { s.cpu_read(s.cpu.pc); }
-            0x3A => { s.cpu_read(s.cpu.pc); }
-            0x5A => { s.cpu_read(s.cpu.pc); }
-            0x7A => { s.cpu_read(s.cpu.pc); }
-            0xDA => { s.cpu_read(s.cpu.pc); }
-            0xFA => { s.cpu_read(s.cpu.pc); }
+            0x1A => { s.cpu_peek(s.cpu.pc); }
+            0x3A => { s.cpu_peek(s.cpu.pc); }
+            0x5A => { s.cpu_peek(s.cpu.pc); }
+            0x7A => { s.cpu_peek(s.cpu.pc); }
+            0xDA => { s.cpu_peek(s.cpu.pc); }
+            0xFA => { s.cpu_peek(s.cpu.pc); }
             // Undocumented NOPs (zero-page-x: 2 byte, 4 cycle)
             0x14 => inst_fetch!(zero, x; _data, { }),
             0x34 => inst_fetch!(zero, x; _data, { }),
