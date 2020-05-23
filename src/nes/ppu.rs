@@ -66,34 +66,26 @@ pub fn emulate(s: &mut State, cycles: u64) {
     let ppu = &mut s.ppu;
     let mut cycles_left = cycles;
     while cycles_left > 0 {
-        match ppu.scanline {
-            261 => {
-                // Pre-render scanline.
-                if ppu.tick == 1 {
-                    ppu.vblank = 0;
-                    ppu.frame_buffer.clear();
-                }
+        if ppu.scanline == 261 && ppu.tick == 1 {
+            // Pre-render.
+            ppu.vblank = 0;
+            ppu.frame_buffer.clear();
+        }
+        if ppu.scanline <= 239 || ppu.scanline == 261 {
+            // Pre-render and visible scanlines.
+            let x = (ppu.scanline as u64) * (ppu.tick as u64);
+            ppu.frame_buffer.0[x as usize] = (x & 0xFF) as u8;
+        }
+        if ppu.scanline == 240 {
+            // Post-render scanline.
+        }
+        if ppu.scanline == 241 && ppu.tick == 1 {
+            // Start of vblank.
+            if ppu.flag_generate_nmi > 0 {
+                s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
             }
-            0..=239 => {
-                // Visible scanlines.
-                let x = (ppu.scanline as u64) * (ppu.tick as u64);
-                ppu.frame_buffer.0[x as usize] = (x & 0xFF) as u8;
-            }
-            240 => {
-                // Post-render scanline.
-            }
-            241 => {
-                // Start of vblank
-                if ppu.tick == 1 {
-                    if ppu.flag_generate_nmi > 0 {
-                        s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
-                    }
-                    ppu.vblank = 1;
-                    ppu.frames += 1;
-                }
-            }
-            242..=260 => { /* vblank */ }
-            _ => {}
+            ppu.vblank = 1;
+            ppu.frames += 1;
         }
 
         // Increment counters.
