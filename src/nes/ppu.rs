@@ -184,17 +184,16 @@ fn fetch_tile(s: &mut State) {
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
-    let ppu = &mut s.ppu;
-    ppu.latch = match register {
+    s.ppu.latch = match register {
         2 => {
             // PPUSTATUS
-            let data = (ppu.latch & 0x1F)
-                | (ppu.sprite_overflow) << 5
-                | (ppu.sprite0_hit) << 6
-                | (ppu.vblank) << 7;
+            let data = (s.ppu.latch & 0x1F)
+                | (s.ppu.sprite_overflow) << 5
+                | (s.ppu.sprite0_hit) << 6
+                | (s.ppu.vblank) << 7;
 
-            ppu.vblank = 0;
-            ppu.w = 0;
+            s.ppu.vblank = 0;
+            s.ppu.w = 0;
             data
         }
         4 => {
@@ -205,38 +204,37 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
             // TODO PPUDATA
             0
         }
-        _ => ppu.latch
+        _ => s.ppu.latch
     };
-    ppu.latch
+    s.ppu.latch
 }
 
 pub fn poke_register(s: &mut State, register: u16, data: u8) {
-    let ppu = &mut s.ppu;
-    ppu.latch = data;
+    s.ppu.latch = data;
     match register {
         0 => {
             // PPUCTRL
             // t: ...BA.. ........ = d: ......BA
-            ppu.t = (ppu.t & 0b1111_0011_1111_1111)
+            s.ppu.t = (s.ppu.t & 0b1111_0011_1111_1111)
                 | (((data & 0b11) as u16) << 10);
 
-            ppu.flag_vram_increment = (data >> 2) & 0x1;
-            ppu.flag_sprite_table_addr = (data >> 3) & 0x1;
-            ppu.flag_background_table_addr = (data >> 4) & 0x1;
-            ppu.flag_sprite_size = (data >> 5) & 0x1;
-            ppu.flag_master_slave = (data >> 6) & 0x1;
-            ppu.flag_generate_nmi = (data >> 7) & 0x1 > 0;
+            s.ppu.flag_vram_increment = (data >> 2) & 0x1;
+            s.ppu.flag_sprite_table_addr = (data >> 3) & 0x1;
+            s.ppu.flag_background_table_addr = (data >> 4) & 0x1;
+            s.ppu.flag_sprite_size = (data >> 5) & 0x1;
+            s.ppu.flag_master_slave = (data >> 6) & 0x1;
+            s.ppu.flag_generate_nmi = (data >> 7) & 0x1 > 0;
         }
         1 => {
             // PPUMASK
-            ppu.flag_grayscale = (data >> 0) & 0x1 > 0;
-            ppu.flag_show_background_left = (data >> 1) & 0x1 > 0;
-            ppu.flag_show_sprites_left = (data >> 2) & 0x1 > 0;
-            ppu.flag_render_background = (data >> 3) & 0x1 > 0;
-            ppu.flag_render_sprites = (data >> 4) & 0x1 > 0;
-            ppu.flag_emphasize_red = (data >> 5) & 0x1 > 0;
-            ppu.flag_emphasize_green = (data >> 6) & 0x1 > 0;
-            ppu.flag_emphasize_blue = (data >> 7) & 0x1 > 0;
+            s.ppu.flag_grayscale = (data >> 0) & 0x1 > 0;
+            s.ppu.flag_show_background_left = (data >> 1) & 0x1 > 0;
+            s.ppu.flag_show_sprites_left = (data >> 2) & 0x1 > 0;
+            s.ppu.flag_render_background = (data >> 3) & 0x1 > 0;
+            s.ppu.flag_render_sprites = (data >> 4) & 0x1 > 0;
+            s.ppu.flag_emphasize_red = (data >> 5) & 0x1 > 0;
+            s.ppu.flag_emphasize_green = (data >> 6) & 0x1 > 0;
+            s.ppu.flag_emphasize_blue = (data >> 7) & 0x1 > 0;
         }
         3 => {
             // TODO OAMADDR
@@ -247,31 +245,31 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         5 => {
             // PPUSCROLL
             // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Register_controls
-            if ppu.w == 0 {
+            if s.ppu.w == 0 {
                 // t: ....... ...HGFED = d: HGFED...
-                ppu.t = (ppu.t & 0b1111_1111_1110_0000)
+                s.ppu.t = (s.ppu.t & 0b1111_1111_1110_0000)
                     | ((data & 0b11111000) as u16 >> 3);
                 // x:              CBA = d: .....CBA
-                ppu.x = (data & 0b111) as u16;
-                ppu.w = 1;
+                s.ppu.x = (data & 0b111) as u16;
+                s.ppu.w = 1;
             } else {
                 // t: CBA..HG FED..... = d: HGFEDCBA
-                ppu.t = (ppu.t & 0b1000_1100_0001_1111)
+                s.ppu.t = (s.ppu.t & 0b1000_1100_0001_1111)
                     | ((data & 0b0000_0111) as u16) << 12
                     | ((data & 0b1111_1000) as u16) << 2;
-                ppu.w = 0;
+                s.ppu.w = 0;
             }
         }
         6 => {
             // PPUADDR
-            if ppu.w == 0 {
-                ppu.t = (ppu.t & 0b1000_0000_1111_1111)
+            if s.ppu.w == 0 {
+                s.ppu.t = (s.ppu.t & 0b1000_0000_1111_1111)
                     | ((data & 0b0011_1111) as u16) << 8;
-                ppu.w = 1;
+                s.ppu.w = 1;
             } else {
-                ppu.t = (ppu.t & 0xFF00) | (data as u16);
-                ppu.v = ppu.t;
-                ppu.w = 0;
+                s.ppu.t = (s.ppu.t & 0xFF00) | (data as u16);
+                s.ppu.v = s.ppu.t;
+                s.ppu.w = 0;
             }
         }
         7 => {
