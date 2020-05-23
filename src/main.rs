@@ -1,6 +1,6 @@
 extern crate sdl2;
 
-use std::ops::Sub;
+use std::time::{Duration, Instant};
 
 mod nes;
 
@@ -22,10 +22,11 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ARGB8888, WIDTH, HEIGHT)
         .map_err(|e| e.to_string())?;
 
-    let mut event_pump = sdl_context.event_pump()?;
-
     let buf = [0u8; (WIDTH * HEIGHT * 4) as usize];
+    let mut frame_counter = 0;
+    let mut frame_timer = Instant::now();
 
+    let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -37,18 +38,28 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         }
 
         // Update
-        let frame_start = std::time::Instant::now();
+        let frame_start = Instant::now();
 
         nes.emulate_frame();
         texture.update(None, &buf, (WIDTH * 4) as usize).map_err(|e| e.to_string())?;
         canvas.copy(&texture, None, None)?;
         canvas.present();
 
-        let frame_end = std::time::Instant::now();
+        // FPS display
+        frame_counter += 1;
+        if Instant::now() - frame_timer > Duration::from_secs(1) {
+            canvas.window_mut()
+                .set_title(&format!("NES - FPS: {}", frame_counter))
+                .map_err(|e| e.to_string())?;
+            frame_counter = 0;
+            frame_timer = Instant::now();
+        }
+
+        let frame_end = Instant::now();
         let frame_time = frame_end.duration_since(frame_start);
-        let period = std::time::Duration::from_nanos(1_000_000_000 / 60);
+        let period = Duration::from_nanos(1_000_000_000 / 60);
         if period > frame_time {
-            std::thread::sleep(period.sub(frame_time));
+            std::thread::sleep(period - frame_time);
         }
     }
 
