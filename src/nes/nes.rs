@@ -3,6 +3,11 @@ use super::mapper;
 use super::cpu;
 use super::ppu;
 
+pub const FRAME_DEPTH: usize = 4;
+pub const FRAME_WIDTH: usize = 256;
+pub const FRAME_HEIGHT: usize = 240;
+pub const FRAME_SIZE: usize = FRAME_DEPTH * FRAME_WIDTH * FRAME_HEIGHT;
+
 pub struct Nes {
     pub state: State,
 }
@@ -32,6 +37,10 @@ impl Nes {
             let cycles = cpu::emulate(&mut self.state, 1);
             ppu::emulate(&mut self.state, cycles * 3);
         }
+    }
+
+    pub fn get_frame_buffer(&self) -> &[u8; FRAME_SIZE] {
+        &self.state.ppu.frame_buffer.0
     }
 }
 

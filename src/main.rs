@@ -22,7 +22,6 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ARGB8888, WIDTH, HEIGHT)
         .map_err(|e| e.to_string())?;
 
-    let buf = [0u8; (WIDTH * HEIGHT * 4) as usize];
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
 
@@ -41,7 +40,8 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         let frame_start = Instant::now();
 
         nes.emulate_frame();
-        texture.update(None, &buf, (WIDTH * 4) as usize).map_err(|e| e.to_string())?;
+        let buf = nes.get_frame_buffer();
+        texture.update(None, buf, (WIDTH * 4) as usize).map_err(|e| e.to_string())?;
         canvas.copy(&texture, None, None)?;
         canvas.present();
 

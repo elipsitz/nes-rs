@@ -1,13 +1,30 @@
-use super::nes::State;
+use super::nes::{State, FRAME_SIZE};
 use super::cpu;
+
+pub struct FrameBuffer(pub [u8; FRAME_SIZE]);
+
+impl Default for FrameBuffer {
+    fn default() -> FrameBuffer {
+        FrameBuffer([0; FRAME_SIZE])
+    }
+}
+
+impl FrameBuffer {
+    fn clear(&mut self) {
+        for i in 0..self.0.len() {
+            self.0[i] = 0;
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct PpuState {
     scanline: u16,
-    tick: u64,
+    tick: u16,
     pub frames: u64,
     cycles: u64,
 
+    pub frame_buffer: FrameBuffer,
 
     latch: u8,
     sprite_overflow: u8,
@@ -52,10 +69,13 @@ pub fn emulate(s: &mut State, cycles: u64) {
                 // Pre-render scanline.
                 if ppu.tick == 1 {
                     ppu.vblank = 0;
+                    ppu.frame_buffer.clear();
                 }
             }
             0..=239 => {
                 // Visible scanlines.
+                let x = (ppu.scanline as u64) * (ppu.tick as u64);
+                ppu.frame_buffer.0[x as usize] = (x & 0xFF) as u8;
             }
             240 => {
                 // Post-render scanline.
@@ -63,7 +83,6 @@ pub fn emulate(s: &mut State, cycles: u64) {
             241 => {
                 // Start of vblank
                 if ppu.tick == 1 {
-                    // XXX: frame is over, push frame buffer.
                     if ppu.flag_generate_nmi > 0 {
                         s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
                     }
