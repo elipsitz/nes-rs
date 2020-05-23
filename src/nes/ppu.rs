@@ -38,6 +38,7 @@ pub struct PpuState {
 
     pub frame_buffer: FrameBuffer,
 
+    data_buffer: u8,
     latch: u8,
     sprite_overflow: u8,
     sprite0_hit: u8,
@@ -201,8 +202,17 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
             0
         }
         7 => {
-            // TODO PPUDATA
-            0
+            // PPUDATA
+            let mut data = s.ppu_peek(s.ppu.v);
+            if s.ppu.v <= 0x3EFF {
+                // buffer this read
+                std::mem::swap(&mut data, &mut s.ppu.data_buffer);
+            } else {
+                s.ppu.data_buffer = s.ppu_peek(s.ppu.v - 0x1000);
+            }
+
+            s.ppu.v += if s.ppu.flag_vram_increment == 0 { 1 } else { 32 };
+            data
         }
         _ => s.ppu.latch
     };
@@ -273,7 +283,9 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             }
         }
         7 => {
-            // TODO PPUDATA
+            // PPUDATA
+            s.ppu_poke(s.ppu.v, data);
+            s.ppu.v += if s.ppu.flag_vram_increment == 0 { 1 } else { 32 };
         }
         _ => {}
     };

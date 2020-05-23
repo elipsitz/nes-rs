@@ -80,6 +80,7 @@ impl State {
     }
 
     pub fn ppu_peek(&mut self, addr: u16) -> u8 {
+        let addr = addr & 0x3FFF;
         // https://wiki.nesdev.com/w/index.php/PPU_memory_map
         match addr {
             0x3F00..=0x3FFF => self.ppu.palette[(addr & 0x1F) as usize],
@@ -88,6 +89,7 @@ impl State {
     }
 
     pub fn ppu_poke(&mut self, addr: u16, data: u8) {
+        let addr = addr & 0x3FFF;
         // https://wiki.nesdev.com/w/index.php/PPU_memory_map
         match addr {
             0x3F00..=0x3FFF => { self.ppu.palette[(addr & 0x1F) as usize] = data },
