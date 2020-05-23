@@ -2,6 +2,17 @@ use super::nes::{State, FRAME_SIZE};
 use super::cpu;
 use crate::nes::nes::{FRAME_WIDTH, FRAME_DEPTH};
 
+const COLORS: [u32; 64] = [
+    0x545454, 0x001e74, 0x081090, 0x300088, 0x440064, 0x5c0030, 0x540400, 0x3c1800,
+    0x202a00, 0x083a00, 0x004000, 0x003c00, 0x00323c, 0x000000, 0x000000, 0x000000,
+    0x989698, 0x084cc4, 0x3032ec, 0x5c1ee4, 0x8814b0, 0xa01464, 0x982220, 0x783c00,
+    0x545a00, 0x287200, 0x087c00, 0x007628, 0x006678, 0x000000, 0x000000, 0x000000,
+    0xeceeec, 0x4c9aec, 0x787cec, 0xb062ec, 0xe454ec, 0xec58b4, 0xec6a64, 0xd48820,
+    0xa0aa00, 0x74c400, 0x4cd020, 0x38cc6c, 0x38b4cc, 0x3c3c3c, 0x000000, 0x000000,
+    0xeceeec, 0xa8ccec, 0xbcbcec, 0xd4b2ec, 0xecaeec, 0xecaed4, 0xecb4b0, 0xe4c490,
+    0xccd278, 0xb4de78, 0xa8e290, 0x98e2b4, 0xa0d6e4, 0xa0a2a0, 0x000000, 0x000000,
+];
+
 pub struct FrameBuffer(pub [u8; FRAME_SIZE]);
 
 impl Default for FrameBuffer {
@@ -32,6 +43,7 @@ pub struct PpuState {
     sprite0_hit: u8,
     vblank: u8,
 
+    pub palette: [u8; 32],
     background_data: u64,
 
     // Scrolling registers
@@ -119,7 +131,7 @@ fn render_pixel(s: &mut State) {
     // let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF) as u8 * 100;
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
-    let mut bg_pixel = 0;
+    let mut col = 0;
 
     if y < 128 {
         let mut addr = 0
@@ -131,16 +143,16 @@ fn render_pixel(s: &mut State) {
         }
         let lo = s.ppu_peek(addr as u16);
         let hi = s.ppu_peek((addr + 8) as u16);
-
-        let col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
-        bg_pixel = (col + 1) * 60;
+        col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
     }
+
+    let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
 
     let frame = &mut s.ppu.frame_buffer.0;
     let i = ((y * FRAME_WIDTH) + x) * FRAME_DEPTH;
-    frame[i + 0] = bg_pixel;
-    frame[i + 1] = bg_pixel;
-    frame[i + 2] = bg_pixel;
+    frame[i + 0] = ((pixel & 0xFF0000) >> 16) as u8;
+    frame[i + 1] = ((pixel & 0x00FF00) >> 8) as u8;
+    frame[i + 2] = ((pixel & 0x0000FF) >> 0) as u8;
     frame[i + 3] = 255;
 }
 
