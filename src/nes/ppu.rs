@@ -31,11 +31,13 @@ pub struct PpuState {
     sprite0_hit: u8,
     vblank: u8,
 
-    // PPUSCROLL/PPUADDR write index
+    // Scrolling registers
+    v: u16,
+    t: u16,
+    x: u16,
     w: u8,
 
     // PPUCTRL
-    flag_nametable_base: u8,
     flag_vram_increment: u8,
     flag_sprite_table_addr: u8,
     flag_background_table_addr: u8,
@@ -141,7 +143,10 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
     match register {
         0 => {
             // PPUCTRL
-            ppu.flag_nametable_base = (data >> 0) & 0x3;
+            // t: ...BA.. ........ = d: ......BA
+            ppu.t = (ppu.t & 0b1111_0011_1111_1111)
+                | (((data & 0b11) as u16) << 10);
+
             ppu.flag_vram_increment = (data >> 2) & 0x1;
             ppu.flag_sprite_table_addr = (data >> 3) & 0x1;
             ppu.flag_background_table_addr = (data >> 4) & 0x1;
@@ -167,11 +172,34 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             // TODO OAMDATA
         }
         5 => {
-            // TODO PPUSCROLL
+            // PPUSCROLL
             // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Register_controls
+            if ppu.w == 0 {
+                // t: ....... ...HGFED = d: HGFED...
+                ppu.t = (ppu.t & 0b1111_1111_1110_0000)
+                    | ((data & 0b11111000) as u16 >> 3);
+                // x:              CBA = d: .....CBA
+                ppu.x = (data & 0b111) as u16;
+                ppu.w = 1;
+            } else {
+                // t: CBA..HG FED..... = d: HGFEDCBA
+                ppu.t = (ppu.t & 0b1000_1100_0001_1111)
+                    | ((data & 0b0000_0111) as u16) << 12
+                    | ((data & 0b1111_1000) as u16) << 2;
+                ppu.w = 0;
+            }
         }
         6 => {
-            // TODO PPUADDR
+            // PPUADDR
+            if ppu.w == 0 {
+                ppu.t = (ppu.t & 0b1000_0000_1111_1111)
+                    | ((data & 0b0011_1111) as u16) << 8;
+                ppu.w = 1;
+            } else {
+                ppu.t = (ppu.t & 0xFF00) | (data as u16);
+                ppu.v = ppu.t;
+                ppu.w = 0;
+            }
         }
         7 => {
             // TODO PPUDATA
