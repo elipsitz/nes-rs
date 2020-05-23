@@ -82,7 +82,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
             // Pre-render and visible scanlines.
             if (s.ppu.tick >= 1 && s.ppu.tick <= 256) || (s.ppu.tick >= 321 && s.ppu.tick <= 336) {
                 if s.ppu.tick & 0x7 == 1 {
-                    fetch_tile();
+                    fetch_tile(s);
                 }
             }
         }
@@ -116,8 +116,31 @@ fn render_pixel() {
 
 }
 
-fn fetch_tile() {
+fn fetch_tile(s: &mut State) {
+    let nt_addr = 0x2000 | (s.ppu.v & 0x0FFF);
+    let nt_data = s.ppu_peek(nt_addr) as u16;
+    let at_addr = 0x23C0 | (s.ppu.v & 0x0C00) | ((s.ppu.v >> 4) & 0x38) | ((s.ppu.v >> 2) & 0x07);
+    let at_data = s.ppu_peek(at_addr) as u16;
 
+    // process attribute data to select correct tile
+    let at_data = ((at_data >> (((s.ppu.v >> 4) & 4) | (s.ppu.v & 2))) & 3) << 2;
+
+    let pattern_addr: u16 = 0
+        | ((s.ppu.v >> 12) & 0x7)
+        | nt_data << 4
+        | (s.ppu.flag_background_table_addr as u16) << 12;
+
+    let mut pattern_lo = s.ppu_peek(pattern_addr) as u16;
+    let mut pattern_hi = s.ppu_peek(pattern_addr + 8) as u16;
+
+    let mut bitmap: u64 = 0;
+    for _ in 0..8 {
+        let pixel_data = at_data | ((pattern_lo & 0x80) >> 7) | ((pattern_hi & 0x80) >> 6);
+        pattern_lo <<= 1;
+        pattern_hi <<= 1;
+        bitmap = (bitmap << 4) | (pixel_data as u64);
+    }
+    s.ppu.background_data |= bitmap;
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
