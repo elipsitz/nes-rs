@@ -1,5 +1,6 @@
 use super::nes::{State, FRAME_SIZE};
 use super::cpu;
+use crate::nes::nes::{FRAME_WIDTH, FRAME_DEPTH};
 
 pub struct FrameBuffer(pub [u8; FRAME_SIZE]);
 
@@ -74,13 +75,15 @@ pub fn emulate(s: &mut State, cycles: u64) {
         }
 
         let rendering_enabled = s.ppu.flag_render_sprites || s.ppu.flag_render_background;
-        if s.ppu.scanline < 240 && rendering_enabled {
-            render_pixel();
+        if s.ppu.scanline < 240 && rendering_enabled && s.ppu.tick >= 1 && s.ppu.tick <= 256 {
+            render_pixel(s);
         }
 
         if s.ppu.scanline <= 239 || s.ppu.scanline == 261 {
             // Pre-render and visible scanlines.
             if (s.ppu.tick >= 1 && s.ppu.tick <= 256) || (s.ppu.tick >= 321 && s.ppu.tick <= 336) {
+                s.ppu.background_data <<= 4;
+
                 if s.ppu.tick & 0x7 == 1 {
                     fetch_tile(s);
                 }
@@ -112,8 +115,33 @@ pub fn emulate(s: &mut State, cycles: u64) {
     }
 }
 
-fn render_pixel() {
+fn render_pixel(s: &mut State) {
+    // let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF) as u8 * 100;
+    let x = (s.ppu.tick - 1) as usize;
+    let y = s.ppu.scanline as usize;
+    let mut bg_pixel = 0;
 
+    if y < 128 {
+        let mut addr = 0
+            | (y % 8)
+            | (x % 128 / 8) << 4
+            | (y % 128 / 8) << 8;
+        if x >= 128 {
+            addr |= 0x1000;
+        }
+        let lo = s.ppu_peek(addr as u16);
+        let hi = s.ppu_peek((addr + 8) as u16);
+
+        let col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
+        bg_pixel = (col + 1) * 60;
+    }
+
+    let frame = &mut s.ppu.frame_buffer.0;
+    let i = ((y * FRAME_WIDTH) + x) * FRAME_DEPTH;
+    frame[i + 0] = bg_pixel;
+    frame[i + 1] = bg_pixel;
+    frame[i + 2] = bg_pixel;
+    frame[i + 3] = 255;
 }
 
 fn fetch_tile(s: &mut State) {
