@@ -1,5 +1,14 @@
 use super::nes::State;
 
+#[allow(dead_code)]
+#[derive(Debug, PartialEq)]
+pub enum InterruptKind {
+    None,
+    Reset,
+    IRQ,
+    NMI,
+}
+
 pub struct CpuState {
     pub a: u8,
     pub x: u8,
@@ -20,6 +29,7 @@ pub struct CpuState {
     // Negative
     pub status_n: bool,
 
+    pub pending_interrupt: InterruptKind,
     pub cycles: u64,
 }
 
@@ -38,6 +48,7 @@ impl CpuState {
             status_d: false,
             status_v: false,
             status_n: false,
+            pending_interrupt: InterruptKind::None,
         }
     }
 }
@@ -64,7 +75,7 @@ fn status_unpack(s: &mut State, packed: u8) {
 }
 
 // Reads the NMI vector.
-pub fn _vector_nmi(s: &mut State) -> u16 {
+pub fn vector_nmi(s: &mut State) -> u16 {
     (s.cpu_peek(0xFFFA) as u16) | ((s.cpu_peek(0xFFFB) as u16) << 8)
 }
 
@@ -76,6 +87,25 @@ pub fn vector_reset(s: &mut State) -> u16 {
 // Reads the BRK vector.
 pub fn vector_brk(s: &mut State) -> u16 {
     (s.cpu_peek(0xFFFE) as u16) | ((s.cpu_peek(0xFFFF) as u16) << 8)
+}
+
+fn handle_interrupt(s: &mut State) {
+    s.cpu_peek(s.cpu.pc);
+    s.cpu_peek(s.cpu.pc);
+    let pc = s.cpu.pc;
+    let hi = (pc >> 8) & 0xFF;
+    let lo = pc & 0xFF;
+    stack_push(s, hi as u8);
+    stack_push(s, lo as u8);
+    stack_push(s, status_pack(s, false));
+    s.cpu.status_i = true;
+    s.cpu.pc = match s.cpu.pending_interrupt {
+        InterruptKind::NMI => vector_nmi(s),
+        InterruptKind::IRQ => vector_brk(s),
+        InterruptKind::Reset => vector_reset(s),
+        _ => unreachable!()
+    };
+    s.cpu.pending_interrupt = InterruptKind::None;
 }
 
 // Reads the lo byte from `address` and the hi byte from `address + 1`, wrapped around on the lower byte.
@@ -432,6 +462,11 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     let start_cycles = s.cpu.cycles;
     let end_cycles = start_cycles + min_cycles;
     while s.cpu.cycles < end_cycles {
+        if s.cpu.pending_interrupt != InterruptKind::None {
+            println!("interrupt: {:?} at {}", s.cpu.pending_interrupt, s.cpu.cycles);
+            handle_interrupt(s);
+        }
+
         let _cycle = s.cpu.cycles;
         let opcode = s.cpu_peek(s.cpu.pc);
         /* println!(

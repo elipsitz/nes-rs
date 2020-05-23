@@ -30,7 +30,7 @@ impl Nes {
         let start_frame = self.state.ppu.frames;
         while self.state.ppu.frames == start_frame {
             let cycles = cpu::emulate(&mut self.state, 1);
-            ppu::emulate(&mut self.state, cycles);
+            ppu::emulate(&mut self.state, cycles * 3);
         }
     }
 }

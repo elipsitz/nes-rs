@@ -1,8 +1,13 @@
 use super::nes::State;
+use super::cpu;
 
 #[derive(Default)]
 pub struct PpuState {
+    scanline: u16,
+    tick: u64,
     pub frames: u64,
+    cycles: u64,
+
 
     latch: u8,
     sprite_overflow: u8,
@@ -39,7 +44,49 @@ impl PpuState {
 }
 
 pub fn emulate(s: &mut State, cycles: u64) {
+    let ppu = &mut s.ppu;
+    let mut cycles_left = cycles;
+    while cycles_left > 0 {
+        match ppu.scanline {
+            261 => {
+                // Pre-render scanline.
+                if ppu.tick == 1 {
+                    ppu.vblank = 0;
+                }
+            }
+            0..=239 => {
+                // Visible scanlines.
+            }
+            240 => {
+                // Post-render scanline.
+            }
+            241 => {
+                // Start of vblank
+                if ppu.tick == 1 {
+                    // XXX: frame is over, push frame buffer.
+                    if ppu.flag_generate_nmi > 0 {
+                        s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
+                    }
+                    ppu.vblank = 1;
+                    ppu.frames += 1;
+                }
+            }
+            242..=260 => { /* vblank */ }
+            _ => {}
+        }
 
+        // Increment counters.
+        ppu.cycles += 1;
+        ppu.tick += 1;
+        if ppu.tick == 341 || (ppu.scanline == 261 && (ppu.frames & 1 > 0) && ppu.tick == 340) {
+            ppu.tick = 0;
+            ppu.scanline += 1;
+            if ppu.scanline > 261 {
+                ppu.scanline = 0;
+            }
+        }
+        cycles_left -= 1;
+    }
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
