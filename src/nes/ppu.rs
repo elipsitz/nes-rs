@@ -31,6 +31,8 @@ pub struct PpuState {
     sprite0_hit: u8,
     vblank: u8,
 
+    background_data: u64,
+
     // Scrolling registers
     v: u16,
     t: u16,
@@ -43,17 +45,17 @@ pub struct PpuState {
     flag_background_table_addr: u8,
     flag_sprite_size: u8,
     flag_master_slave: u8,
-    flag_generate_nmi: u8,
+    flag_generate_nmi: bool,
 
     // PPUMASK
-    flag_grayscale: u8,
-    flag_show_sprites_left: u8,
-    flag_show_background_left: u8,
-    flag_render_sprites: u8,
-    flag_render_background: u8,
-    flag_emphasize_red: u8,
-    flag_emphasize_green: u8,
-    flag_emphasize_blue: u8,
+    flag_grayscale: bool,
+    flag_show_sprites_left: bool,
+    flag_show_background_left: bool,
+    flag_render_sprites: bool,
+    flag_render_background: bool,
+    flag_emphasize_red: bool,
+    flag_emphasize_green: bool,
+    flag_emphasize_blue: bool,
 }
 
 impl PpuState {
@@ -71,17 +73,26 @@ pub fn emulate(s: &mut State, cycles: u64) {
             ppu.vblank = 0;
             ppu.frame_buffer.clear();
         }
+
+        let rendering_enabled = ppu.flag_render_sprites || ppu.flag_render_background;
+        if ppu.scanline < 240 && rendering_enabled {
+            render_pixel();
+        }
+
         if ppu.scanline <= 239 || ppu.scanline == 261 {
             // Pre-render and visible scanlines.
-            let x = (ppu.scanline as u64) * (ppu.tick as u64);
-            ppu.frame_buffer.0[x as usize] = (x & 0xFF) as u8;
+            if (ppu.tick >= 1 && ppu.tick <= 256) || (ppu.tick >= 321 && ppu.tick <= 336) {
+                if ppu.tick & 0x7 == 1 {
+                    fetch_tile();
+                }
+            }
         }
-        if ppu.scanline == 240 {
-            // Post-render scanline.
-        }
+
+        // Scanline 240 (post-render) is idle.
+
         if ppu.scanline == 241 && ppu.tick == 1 {
             // Start of vblank.
-            if ppu.flag_generate_nmi > 0 {
+            if ppu.flag_generate_nmi {
                 s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
             }
             ppu.vblank = 1;
@@ -100,6 +111,14 @@ pub fn emulate(s: &mut State, cycles: u64) {
         }
         cycles_left -= 1;
     }
+}
+
+fn render_pixel() {
+
+}
+
+fn fetch_tile() {
+
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
@@ -144,18 +163,18 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             ppu.flag_background_table_addr = (data >> 4) & 0x1;
             ppu.flag_sprite_size = (data >> 5) & 0x1;
             ppu.flag_master_slave = (data >> 6) & 0x1;
-            ppu.flag_generate_nmi = (data >> 7) & 0x1;
+            ppu.flag_generate_nmi = (data >> 7) & 0x1 > 0;
         }
         1 => {
             // PPUMASK
-            ppu.flag_grayscale = (data >> 0) & 0x1;
-            ppu.flag_show_background_left = (data >> 1) & 0x1;
-            ppu.flag_show_sprites_left = (data >> 2) & 0x1;
-            ppu.flag_render_background = (data >> 3) & 0x1;
-            ppu.flag_render_sprites = (data >> 4) & 0x1;
-            ppu.flag_emphasize_red = (data >> 5) & 0x1;
-            ppu.flag_emphasize_green = (data >> 6) & 0x1;
-            ppu.flag_emphasize_blue = (data >> 7) & 0x1;
+            ppu.flag_grayscale = (data >> 0) & 0x1 > 0;
+            ppu.flag_show_background_left = (data >> 1) & 0x1 > 0;
+            ppu.flag_show_sprites_left = (data >> 2) & 0x1 > 0;
+            ppu.flag_render_background = (data >> 3) & 0x1 > 0;
+            ppu.flag_render_sprites = (data >> 4) & 0x1 > 0;
+            ppu.flag_emphasize_red = (data >> 5) & 0x1 > 0;
+            ppu.flag_emphasize_green = (data >> 6) & 0x1 > 0;
+            ppu.flag_emphasize_blue = (data >> 7) & 0x1 > 0;
         }
         3 => {
             // TODO OAMADDR
