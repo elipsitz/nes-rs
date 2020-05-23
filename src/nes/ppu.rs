@@ -81,15 +81,37 @@ impl PpuState {
 pub fn emulate(s: &mut State, cycles: u64) {
     let mut cycles_left = cycles;
     while cycles_left > 0 {
-        if s.ppu.scanline == 261 && s.ppu.tick == 1 {
+        let rendering_enabled = s.ppu.flag_render_sprites || s.ppu.flag_render_background;
+
+        if s.ppu.scanline == 261 {
             // Pre-render.
-            s.ppu.vblank = 0;
-            s.ppu.frame_buffer.clear();
+            if s.ppu.tick == 1 {
+                s.ppu.vblank = 0;
+                s.ppu.frame_buffer.clear();
+            }
+            if s.ppu.tick == 304 && rendering_enabled {
+                // XXX:
+                // copy vertical scroll bits
+                // v: IHGF.ED CBA..... = t: IHGF.ED CBA.....
+                s.ppu.v = (s.ppu.v & 0x841F) | (s.ppu.t & 0x7BE0);
+            }
         }
 
-        let rendering_enabled = s.ppu.flag_render_sprites || s.ppu.flag_render_background;
-        if s.ppu.scanline < 240 && rendering_enabled && s.ppu.tick >= 1 && s.ppu.tick <= 256 {
-            render_pixel(s);
+        if s.ppu.scanline < 240 && rendering_enabled {
+            if s.ppu.tick >= 1 && s.ppu.tick <= 256 {
+                render_pixel(s);
+            }
+
+            // Update scrolling.
+            if s.ppu.tick == 256 {
+                increment_scroll_y(&mut s.ppu);
+            } else if s.ppu.tick == 257 {
+                // copy horizontal bits from t to v
+                // v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
+                s.ppu.v = (s.ppu.v & 0xFBE0) | (s.ppu.t & 0x41F);
+            } else if ((s.ppu.tick >= 321 && s.ppu.tick <= 336) || (s.ppu.tick >= 1 && s.ppu.tick <= 256)) && (s.ppu.tick % 8 == 0) {
+                increment_scroll_x(&mut s.ppu);
+            }
         }
 
         if s.ppu.scanline <= 239 || s.ppu.scanline == 261 {
@@ -128,8 +150,35 @@ pub fn emulate(s: &mut State, cycles: u64) {
     }
 }
 
+fn increment_scroll_y(ppu: &mut PpuState) {
+    if ppu.v & 0x7000 != 0x7000 {
+        ppu.v += 0x1000;
+    } else {
+        ppu.v &= 0x8FFF;
+        let mut y = (ppu.v & 0x03E0) >> 5;
+        if y == 29 {
+            y = 0;
+            ppu.v ^= 0x0800;
+        } else if y == 31 {
+            y = 0;
+        } else {
+            y += 1;
+        }
+        ppu.v = (ppu.v & 0xFC1F) | (y << 5)
+    }
+}
+
+fn increment_scroll_x(ppu: &mut PpuState) {
+    if ppu.v & 0x001F == 31 {
+        ppu.v &= 0xFFE0;
+        ppu.v ^= 0x0400;
+    } else {
+        ppu.v += 1;
+    }
+}
+
 fn render_pixel(s: &mut State) {
-    // let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF) as u8 * 100;
+    let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF) as u8 * 100;
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
     let mut col = 0;
