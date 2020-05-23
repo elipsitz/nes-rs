@@ -6,12 +6,13 @@ mod nes;
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
+const SCALE: u32 = 2;
 
 fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
-    let window = video_subsystem.window("NES", WIDTH, HEIGHT)
+    let window = video_subsystem.window("NES", WIDTH * SCALE, HEIGHT * SCALE)
         .position_centered()
         .build()
         .map_err(|e| e.to_string())?;
@@ -19,7 +20,7 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
-        .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ARGB8888, WIDTH, HEIGHT)
+        .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ABGR8888, WIDTH, HEIGHT)
         .map_err(|e| e.to_string())?;
 
     let mut frame_counter = 0;
