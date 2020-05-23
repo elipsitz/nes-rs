@@ -463,7 +463,6 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     let end_cycles = start_cycles + min_cycles;
     while s.cpu.cycles < end_cycles {
         if s.cpu.pending_interrupt != InterruptKind::None {
-            println!("interrupt: {:?} at {}", s.cpu.pending_interrupt, s.cpu.cycles);
             handle_interrupt(s);
         }
 
