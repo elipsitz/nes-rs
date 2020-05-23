@@ -65,24 +65,23 @@ impl PpuState {
 }
 
 pub fn emulate(s: &mut State, cycles: u64) {
-    let ppu = &mut s.ppu;
     let mut cycles_left = cycles;
     while cycles_left > 0 {
-        if ppu.scanline == 261 && ppu.tick == 1 {
+        if s.ppu.scanline == 261 && s.ppu.tick == 1 {
             // Pre-render.
-            ppu.vblank = 0;
-            ppu.frame_buffer.clear();
+            s.ppu.vblank = 0;
+            s.ppu.frame_buffer.clear();
         }
 
-        let rendering_enabled = ppu.flag_render_sprites || ppu.flag_render_background;
-        if ppu.scanline < 240 && rendering_enabled {
+        let rendering_enabled = s.ppu.flag_render_sprites || s.ppu.flag_render_background;
+        if s.ppu.scanline < 240 && rendering_enabled {
             render_pixel();
         }
 
-        if ppu.scanline <= 239 || ppu.scanline == 261 {
+        if s.ppu.scanline <= 239 || s.ppu.scanline == 261 {
             // Pre-render and visible scanlines.
-            if (ppu.tick >= 1 && ppu.tick <= 256) || (ppu.tick >= 321 && ppu.tick <= 336) {
-                if ppu.tick & 0x7 == 1 {
+            if (s.ppu.tick >= 1 && s.ppu.tick <= 256) || (s.ppu.tick >= 321 && s.ppu.tick <= 336) {
+                if s.ppu.tick & 0x7 == 1 {
                     fetch_tile();
                 }
             }
@@ -90,23 +89,23 @@ pub fn emulate(s: &mut State, cycles: u64) {
 
         // Scanline 240 (post-render) is idle.
 
-        if ppu.scanline == 241 && ppu.tick == 1 {
+        if s.ppu.scanline == 241 && s.ppu.tick == 1 {
             // Start of vblank.
-            if ppu.flag_generate_nmi {
+            if s.ppu.flag_generate_nmi {
                 s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
             }
-            ppu.vblank = 1;
-            ppu.frames += 1;
+            s.ppu.vblank = 1;
+            s.ppu.frames += 1;
         }
 
         // Increment counters.
-        ppu.cycles += 1;
-        ppu.tick += 1;
-        if ppu.tick == 341 || (ppu.scanline == 261 && (ppu.frames & 1 > 0) && ppu.tick == 340) {
-            ppu.tick = 0;
-            ppu.scanline += 1;
-            if ppu.scanline > 261 {
-                ppu.scanline = 0;
+        s.ppu.cycles += 1;
+        s.ppu.tick += 1;
+        if s.ppu.tick == 341 || (s.ppu.scanline == 261 && (s.ppu.frames & 1 > 0) && s.ppu.tick == 340) {
+            s.ppu.tick = 0;
+            s.ppu.scanline += 1;
+            if s.ppu.scanline > 261 {
+                s.ppu.scanline = 0;
             }
         }
         cycles_left -= 1;
