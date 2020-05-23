@@ -50,8 +50,8 @@ impl State {
         let data = match addr {
             0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize],
             0x2000..=0x3FFF => ppu::peek_register(self, addr & 0x7),
-            0x4020..=0xFFFF => self.mapper.peek(addr),
-            _ => panic!("unhandled read: {:#04X}", addr)
+            0x4000..=0x401F => /* TODO: APU, input */ 0,
+            _ /*0x4020..=0xFFFF*/ => self.mapper.peek(addr),
         };
         self.cpu.cycles += 1;
         // eprintln!("##### read from 0x{:04X}: val: {:02X}. cycle: {}", addr, data, self.cpu.cycles);
@@ -64,8 +64,8 @@ impl State {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize] = val,
             0x2000..=0x3FFF => ppu::poke_register(self, addr & 0x7, val),
-            0x4020..=0xFFFF => self.mapper.poke(addr, val),
-            _ => panic!("unhandled write: {:#04X} (val {:#02X})", addr, val)
+            0x4000..=0x401F => {} /* TODO: APU, input */
+            _ /* 0x4020..=0xFFFF */ => self.mapper.poke(addr, val),
         }
         self.cpu.cycles += 1;
     }
