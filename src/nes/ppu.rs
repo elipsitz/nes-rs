@@ -117,7 +117,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
         if s.ppu.scanline <= 239 || s.ppu.scanline == 261 {
             // Pre-render and visible scanlines.
             if (s.ppu.tick >= 1 && s.ppu.tick <= 256) || (s.ppu.tick >= 321 && s.ppu.tick <= 336) {
-                s.ppu.background_data <<= 4;
+                s.ppu.background_data >>= 4;
 
                 if s.ppu.tick & 0x7 == 1 {
                     fetch_tile(s);
@@ -178,12 +178,12 @@ fn increment_scroll_x(ppu: &mut PpuState) {
 }
 
 fn render_pixel(s: &mut State) {
-    let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF) as u8 * 100;
+    //let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF);
+    let bg_pixel = s.ppu.background_data & 0xF; // TODO: fine-x scroll
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
-    let mut col = 0;
 
-    if y < 128 {
+    /*if y < 128 {
         let mut addr = 0
             | (y % 8)
             | (x % 128 / 8) << 4
@@ -194,7 +194,8 @@ fn render_pixel(s: &mut State) {
         let lo = s.ppu_peek(addr as u16);
         let hi = s.ppu_peek((addr + 8) as u16);
         col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
-    }
+    }*/
+    let col = bg_pixel;
 
     let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
 
@@ -221,16 +222,16 @@ fn fetch_tile(s: &mut State) {
         | (s.ppu.flag_background_table_addr as u16) << 12;
 
     let mut pattern_lo = s.ppu_peek(pattern_addr) as u16;
-    let mut pattern_hi = s.ppu_peek(pattern_addr + 8) as u16;
+    let mut pattern_hi = s.ppu_peek(pattern_addr | 0x8) as u16;
 
     let mut bitmap: u64 = 0;
     for _ in 0..8 {
-        let pixel_data = at_data | ((pattern_lo & 0x80) >> 7) | ((pattern_hi & 0x80) >> 6);
-        pattern_lo <<= 1;
-        pattern_hi <<= 1;
+        let pixel_data = at_data | (pattern_lo & 0x1) | ((pattern_hi & 0x1) << 1);
+        pattern_lo >>= 1;
+        pattern_hi >>= 1;
         bitmap = (bitmap << 4) | (pixel_data as u64);
     }
-    s.ppu.background_data |= bitmap;
+    s.ppu.background_data |= bitmap << 32;
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
