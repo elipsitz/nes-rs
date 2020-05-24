@@ -45,7 +45,8 @@ pub struct PpuState {
     vblank: u8,
 
     pub palette: [u8; 32],
-    background_data: u64,
+    bg_data: [u8; 24],
+    bg_data_index: usize,
 
     // Scrolling registers
     v: u16,
@@ -97,6 +98,18 @@ pub fn emulate(s: &mut State, cycles: u64) {
             }
         }
 
+        if (s.ppu.scanline <= 239 || s.ppu.scanline == 261) && rendering_enabled {
+            // Pre-render and visible scanlines.
+            if (s.ppu.tick >= 1 && s.ppu.tick <= 256) || (s.ppu.tick >= 321 && s.ppu.tick <= 336) {
+                s.ppu.bg_data_index += 1;
+                s.ppu.bg_data_index %= s.ppu.bg_data.len();
+
+                if s.ppu.tick & 0x7 == 1 {
+                    fetch_tile(s);
+                }
+            }
+        }
+
         if s.ppu.scanline < 240 && rendering_enabled {
             if s.ppu.tick >= 1 && s.ppu.tick <= 256 {
                 render_pixel(s);
@@ -111,17 +124,6 @@ pub fn emulate(s: &mut State, cycles: u64) {
                 s.ppu.v = (s.ppu.v & 0xFBE0) | (s.ppu.t & 0x41F);
             } else if ((s.ppu.tick >= 321 && s.ppu.tick <= 336) || (s.ppu.tick >= 1 && s.ppu.tick <= 256)) && (s.ppu.tick % 8 == 0) {
                 increment_scroll_x(&mut s.ppu);
-            }
-        }
-
-        if s.ppu.scanline <= 239 || s.ppu.scanline == 261 {
-            // Pre-render and visible scanlines.
-            if (s.ppu.tick >= 1 && s.ppu.tick <= 256) || (s.ppu.tick >= 321 && s.ppu.tick <= 336) {
-                s.ppu.background_data >>= 4;
-
-                if s.ppu.tick & 0x7 == 1 {
-                    fetch_tile(s);
-                }
             }
         }
 
@@ -179,7 +181,7 @@ fn increment_scroll_x(ppu: &mut PpuState) {
 
 fn render_pixel(s: &mut State) {
     //let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF);
-    let bg_pixel = s.ppu.background_data & 0xF; // TODO: fine-x scroll
+    let bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
 
@@ -224,14 +226,13 @@ fn fetch_tile(s: &mut State) {
     let mut pattern_lo = s.ppu_peek(pattern_addr) as u16;
     let mut pattern_hi = s.ppu_peek(pattern_addr | 0x8) as u16;
 
-    let mut bitmap: u64 = 0;
-    for _ in 0..8 {
+    for i in 0..8 {
         let pixel_data = at_data | (pattern_lo & 0x1) | ((pattern_hi & 0x1) << 1);
         pattern_lo >>= 1;
         pattern_hi >>= 1;
-        bitmap = (bitmap << 4) | (pixel_data as u64);
+        let ind = (s.ppu.bg_data_index + 24 - 1 - i) % s.ppu.bg_data.len();
+        s.ppu.bg_data[ind] = pixel_data as u8;
     }
-    s.ppu.background_data |= bitmap << 32;
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
