@@ -13,30 +13,13 @@ const COLORS: [u32; 64] = [
     0xccd278, 0xb4de78, 0xa8e290, 0x98e2b4, 0xa0d6e4, 0xa0a2a0, 0x000000, 0x000000,
 ];
 
-pub struct FrameBuffer(pub [u8; FRAME_SIZE]);
-
-impl Default for FrameBuffer {
-    fn default() -> FrameBuffer {
-        FrameBuffer([0; FRAME_SIZE])
-    }
-}
-
-impl FrameBuffer {
-    fn clear(&mut self) {
-        for i in 0..self.0.len() {
-            self.0[i] = 0;
-        }
-    }
-}
-
-#[derive(Default)]
 pub struct PpuState {
     scanline: u16,
     tick: u16,
     pub frames: u64,
     cycles: u64,
 
-    pub frame_buffer: FrameBuffer,
+    pub frame_buffer: [u8; FRAME_SIZE],
 
     data_buffer: u8,
     latch: u8,
@@ -75,7 +58,39 @@ pub struct PpuState {
 
 impl PpuState {
     pub fn new() -> PpuState {
-        PpuState::default()
+        PpuState {
+            scanline: 0,
+            tick: 0,
+            frames: 0,
+            cycles: 0,
+            frame_buffer: [0; FRAME_SIZE],
+            data_buffer: 0,
+            latch: 0,
+            sprite_overflow: 0,
+            sprite0_hit: 0,
+            vblank: 0,
+            palette: [0; 32],
+            bg_data: [0; 24],
+            bg_data_index: 0,
+            v: 0,
+            t: 0,
+            x: 0,
+            w: 0,
+            flag_vram_increment: 0,
+            flag_sprite_table_addr: 0,
+            flag_background_table_addr: 0,
+            flag_sprite_size: 0,
+            flag_master_slave: 0,
+            flag_generate_nmi: false,
+            flag_grayscale: false,
+            flag_show_sprites_left: false,
+            flag_show_background_left: false,
+            flag_render_sprites: false,
+            flag_render_background: false,
+            flag_emphasize_red: false,
+            flag_emphasize_green: false,
+            flag_emphasize_blue: false
+        }
     }
 }
 
@@ -88,7 +103,6 @@ pub fn emulate(s: &mut State, cycles: u64) {
             // Pre-render.
             if s.ppu.tick == 1 {
                 s.ppu.vblank = 0;
-                s.ppu.frame_buffer.clear();
             }
             if s.ppu.tick == 304 && rendering_enabled {
                 // XXX:
@@ -209,7 +223,7 @@ fn render_pixel(s: &mut State) {
     };
 
     let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
-    let frame = &mut s.ppu.frame_buffer.0;
+    let frame = &mut s.ppu.frame_buffer;
     let i = ((y * FRAME_WIDTH) + x) * FRAME_DEPTH;
     frame[i + 0] = ((pixel & 0xFF0000) >> 16) as u8;
     frame[i + 1] = ((pixel & 0x00FF00) >> 8) as u8;

@@ -40,7 +40,7 @@ impl Nes {
     }
 
     pub fn get_frame_buffer(&self) -> &[u8; FRAME_SIZE] {
-        &self.state.ppu.frame_buffer.0
+        &self.state.ppu.frame_buffer
     }
 }
 
