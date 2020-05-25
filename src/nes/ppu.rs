@@ -31,6 +31,12 @@ pub struct PpuState {
     oam_addr: usize,
     oam_1: [u8; 256],
     oam_2: [u8; 32],
+    sprite_eval_n: usize,
+    sprite_eval_m: usize,
+    sprite_eval_read: u8,
+    sprite_eval_scanline_count: usize,
+    sprite_buffer_data: [u8; 256], // Sprite scanline buffer.
+    sprite_buffer_id: [u8; 256], // The sprite ID for each pixel.
 
     pub palette: [u8; 32],
     bg_data: [u8; 24],
@@ -78,6 +84,12 @@ impl PpuState {
             oam_addr: 0,
             oam_1: [0; 256],
             oam_2: [0; 32],
+            sprite_eval_n: 0,
+            sprite_eval_m: 0,
+            sprite_eval_read: 0,
+            sprite_eval_scanline_count: 0,
+            sprite_buffer_data: [0; 256],
+            sprite_buffer_id: [0; 256],
             palette: [0; 32],
             bg_data: [0; 24],
             bg_data_index: 0,
@@ -139,6 +151,8 @@ pub fn emulate(s: &mut State, cycles: u64) {
                 render_pixel(s);
             }
 
+            sprite_evaluation(s);
+
             // Update scrolling.
             if s.ppu.tick == 256 {
                 increment_scroll_y(&mut s.ppu);
@@ -177,6 +191,127 @@ pub fn emulate(s: &mut State, cycles: u64) {
     }
 }
 
+fn sprite_evaluation(s: &mut State) {
+    match s.ppu.tick {
+        1 => {
+            // Ticks 1-64: clear secondary OAM.
+            // But secondary OAM is fully internal state, so just do it all at once.
+            for i in 0..32 {
+                s.ppu.oam_2[i] = 0xFF;
+            }
+
+            s.ppu.sprite_eval_n = 0;
+            s.ppu.sprite_eval_m = 0;
+            s.ppu.sprite_eval_scanline_count = 0;
+        }
+        65..=256 if (s.ppu.sprite_eval_n < 64 && s.ppu.sprite_eval_scanline_count < 8) => {
+            // Ticks 65-256: fetch sprite data from primary OAM into secondary OAM.
+            if s.ppu.tick & 0x1 == 1 {
+                // Primary OAM read
+                let index = s.ppu.sprite_eval_n * 4 + s.ppu.sprite_eval_m;
+                s.ppu.sprite_eval_read = s.ppu.oam_1[index];
+            } else {
+                // Secondary OAM write
+                let oam_2_addr = 4 * s.ppu.sprite_eval_scanline_count + s.ppu.sprite_eval_m;
+                s.ppu.oam_2[oam_2_addr] = s.ppu.sprite_eval_read;
+                match s.ppu.sprite_eval_m {
+                    0 => {
+                        // Y coordinate: is this sprite in range?
+                        let sprite_height = 8 << s.ppu.flag_sprite_size;
+                        let top = s.ppu.sprite_eval_read;
+                        let bottom = s.ppu.sprite_eval_read + sprite_height;
+                        if s.ppu.scanline >= (top as u16) && s.ppu.scanline < (bottom as u16) {
+                            // Sprite in range.
+                            s.ppu.sprite_eval_m += 1;
+                        } else {
+                            // Sprite not in range.
+                            s.ppu.sprite_eval_n += 1;
+                        }
+                    }
+                    3 => {
+                        // TODO: if this is sprite 0, save some info about sprite0 hit?
+                        s.ppu.sprite_eval_n += 1;
+                        s.ppu.sprite_eval_m = 0;
+                        s.ppu.sprite_eval_scanline_count += 1;
+                    }
+                    _ => { s.ppu.sprite_eval_m += 1; }
+                }
+            }
+            // TODO: do sprite overflow flag
+        }
+        256 => {
+            // Internal: set up scanline buffer state.
+            for i in 0..256 {
+                s.ppu.sprite_buffer_data[i] = 0;
+                s.ppu.sprite_buffer_id[i] = 0xFF;
+            }
+        }
+        257..=320 if (s.ppu.tick & 0x7 == 0) => {
+            // Ticks 257-320: fetch selected sprite data from pattern tables.
+            let n = ((s.ppu.tick - 257) / 8) as usize;
+            let (y_pos, tile, attribute, x_pos) = if n < s.ppu.sprite_eval_scanline_count {
+                (
+                    s.ppu.oam_2[n * 4 + 0],
+                    s.ppu.oam_2[n * 4 + 1],
+                    s.ppu.oam_2[n * 4 + 2],
+                    s.ppu.oam_2[n * 4 + 3],
+                )
+            } else {
+                (0xFF, 0xFF, 0xFF, 0xFF)
+            };
+
+            let sprite_table = s.ppu.flag_sprite_table_addr;
+            let mut tile_row = s.ppu.scanline - (y_pos as u16);
+
+            if s.ppu.flag_sprite_size > 0 {
+                // (TODO) 8x16 sprites
+                /*
+                spriteTable = tile & 0x1
+                tile = tile & 0xFE
+                if tileRow >= 8 {
+                    tile |= 1 - (attribute & 0x80 >> 7)
+                    tileRow += 8
+                } else {
+                    tile |= attribute & 0x80 >> 7
+                }
+                */
+            }
+
+            if attribute & 0x80 > 0 {
+                // Flip vertically.
+                tile_row = 7 - tile_row;
+            }
+            let pattern_addr = 0
+                | tile_row
+                | ((tile as u16) << 4)
+                | ((sprite_table as u16) << 12);
+            let lo = s.ppu_peek(pattern_addr);
+            let hi = s.ppu_peek(pattern_addr + 8);
+
+            if attribute & 0x40 > 0 {
+                // TODO: Flip horizontally.
+            }
+
+            // TODO: sprite background priority.
+            // TODO: sprite 0 needs more info.
+            for i in 0..8 {
+                let buf_x = (x_pos + i) as usize;
+                if s.ppu.sprite_buffer_id[buf_x] == 0xFF {
+                    // No sprite is here yet, so put this one.
+                    s.ppu.sprite_buffer_id[buf_x] = n as u8;
+                    s.ppu.sprite_buffer_data[buf_x] = 0
+                        | (((lo & (1 << i)) > 0) as u8) << 0
+                        | (((hi & (1 << i)) > 0) as u8) << 1
+                        | (attribute & 0b11) << 2;
+                }
+            }
+
+            // Add to buffer.
+        }
+        _ => {}
+    }
+}
+
 fn increment_scroll_y(ppu: &mut PpuState) {
     if ppu.v & 0x7000 != 0x7000 {
         ppu.v += 0x1000;
@@ -205,10 +340,10 @@ fn increment_scroll_x(ppu: &mut PpuState) {
 }
 
 fn render_pixel(s: &mut State) {
-    //let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF);
-    let mut bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
+    let mut bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
+    let mut sprite_pixel = s.ppu.sprite_buffer_data[x];
 
     /*if y < 128 {
         let mut addr = 0
@@ -222,15 +357,32 @@ fn render_pixel(s: &mut State) {
         let hi = s.ppu_peek((addr + 8) as u16);
         col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
     }*/
-    if x < 8 && !s.ppu.flag_show_background_left {
-        bg_pixel = 0;
+    if x < 8 {
+        if !s.ppu.flag_show_background_left {
+            bg_pixel = 0;
+        }
+        if !s.ppu.flag_show_sprites_left {
+            sprite_pixel = 0;
+        }
     }
 
     let bg_visible = (bg_pixel & 0x3) != 0;
-    let col = if bg_visible {
+    let sprite_visible = (sprite_pixel & 0x3) != 0;
+    let col = if !bg_visible && !sprite_visible {
+        0
+    } else if !bg_visible {
+        sprite_pixel
+    } else if !sprite_visible {
         bg_pixel
     } else {
-        0
+        // TODO: sprite 0 hit
+        // TODO: sprite/background priority.
+        let sprite_priority = true;
+        if sprite_priority {
+            sprite_pixel
+        } else {
+            bg_pixel
+        }
     };
 
     let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
