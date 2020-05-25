@@ -371,7 +371,8 @@ fn increment_scroll_x(ppu: &mut PpuState) {
 fn render_pixel(s: &mut State) {
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
-    let mut bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
+    let bg_index = (s.ppu.bg_data_index + (s.ppu.x as usize)) % 24;
+    let mut bg_pixel = s.ppu.bg_data[bg_index];
     let mut sprite_pixel = s.ppu.sprite_buffer[x].color;
 
     /*if y < 128 {
