@@ -21,11 +21,16 @@ pub struct PpuState {
 
     pub frame_buffer: [u8; FRAME_SIZE],
 
+    is_rendering: bool,
     data_buffer: u8,
     latch: u8,
     sprite_overflow: u8,
     sprite0_hit: u8,
     vblank: u8,
+
+    oam_addr: usize,
+    oam_1: [u8; 256],
+    oam_2: [u8; 32],
 
     pub palette: [u8; 32],
     bg_data: [u8; 24],
@@ -64,11 +69,15 @@ impl PpuState {
             frames: 0,
             cycles: 0,
             frame_buffer: [0; FRAME_SIZE],
+            is_rendering: false,
             data_buffer: 0,
             latch: 0,
             sprite_overflow: 0,
             sprite0_hit: 0,
             vblank: 0,
+            oam_addr: 0,
+            oam_1: [0; 256],
+            oam_2: [0; 32],
             palette: [0; 32],
             bg_data: [0; 24],
             bg_data_index: 0,
@@ -103,6 +112,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
             // Pre-render.
             if s.ppu.tick == 1 {
                 s.ppu.vblank = 0;
+                s.ppu.is_rendering = true;
             }
             if s.ppu.tick == 304 && rendering_enabled {
                 // XXX:
@@ -148,6 +158,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
             if s.ppu.flag_generate_nmi {
                 s.cpu.pending_interrupt = cpu::InterruptKind::NMI;
             }
+            s.ppu.is_rendering = false;
             s.ppu.vblank = 1;
             s.ppu.frames += 1;
         }
@@ -271,8 +282,9 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
             data
         }
         4 => {
-            // TODO OAMDATA
-            0
+            // OAMDATA
+            // TODO: handle returning (0xFF [or others]) during rendering
+            s.ppu.oam_1[s.ppu.oam_addr]
         }
         7 => {
             // PPUDATA
@@ -320,10 +332,15 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             s.ppu.flag_emphasize_blue = (data >> 7) & 0x1 > 0;
         }
         3 => {
-            // TODO OAMADDR
+            // OAMADDR
+            s.ppu.oam_addr = data as usize;
         }
         4 => {
-            // TODO OAMDATA
+            // OAMDATA
+            if !s.ppu.is_rendering {
+                s.ppu.oam_1[s.ppu.oam_addr] = data;
+                s.ppu.oam_addr = (s.ppu.oam_addr + 1) & 0xFF;
+            }
         }
         5 => {
             // PPUSCROLL
