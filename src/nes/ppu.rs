@@ -238,10 +238,10 @@ fn sprite_evaluation(s: &mut State) {
                 match s.ppu.sprite_eval_m {
                     0 => {
                         // Y coordinate: is this sprite in range?
-                        let sprite_height = 8 << s.ppu.flag_sprite_size;
-                        let top = s.ppu.sprite_eval_read;
-                        let bottom = s.ppu.sprite_eval_read + sprite_height;
-                        if s.ppu.scanline >= (top as u16) && s.ppu.scanline < (bottom as u16) {
+                        let sprite_height = (8 << s.ppu.flag_sprite_size) as u16;
+                        let top = s.ppu.sprite_eval_read as u16;
+                        let bottom = top + sprite_height;
+                        if s.ppu.scanline >= top && s.ppu.scanline < bottom {
                             // Sprite in range.
                             s.ppu.sprite_eval_m += 1;
                         } else {
@@ -271,20 +271,20 @@ fn sprite_evaluation(s: &mut State) {
         257..=320 if (s.ppu.tick & 0x7 == 0) => {
             // Ticks 257-320: fetch selected sprite data from pattern tables.
             let n = ((s.ppu.tick - 257) / 8) as usize;
-            let (y_pos, tile, attribute, x_pos) = if n < s.ppu.sprite_eval_scanline_count {
-                (
-                    s.ppu.oam_2[n * 4 + 0],
-                    s.ppu.oam_2[n * 4 + 1],
-                    s.ppu.oam_2[n * 4 + 2],
-                    s.ppu.oam_2[n * 4 + 3],
-                )
-            } else {
-                (0xFF, 0xFF, 0xFF, 0xFF)
-            };
+
+            if n >= s.ppu.sprite_eval_scanline_count {
+                // Don't draw non-existant sprites.
+                // XXX: these should still read from the pattern table though.
+                return;
+            }
+
+            let y_pos = s.ppu.oam_2[n * 4 + 0];
+            let mut tile = s.ppu.oam_2[n * 4 + 1];
+            let attribute = s.ppu.oam_2[n * 4 + 2];
+            let x_pos = s.ppu.oam_2[n * 4 + 3];
 
             let mut sprite_table = s.ppu.flag_sprite_table_addr;
             let mut tile_row = s.ppu.scanline - (y_pos as u16);
-            let mut tile = tile;
             let flip_vertical = attribute & 0x80 > 0;
 
             if s.ppu.flag_sprite_size > 0 {
@@ -314,14 +314,13 @@ fn sprite_evaluation(s: &mut State) {
                 return;
             }
 
+            let flip_horizontal = attribute & 0x40 > 0;
             for i in 0..8 {
-                let x_off = if attribute & 0x40 == 0 {
-                    7 - i
-                } else {
-                    // Flipped horizontally.
-                    i
-                };
-                let buf_x = (x_pos + x_off) as usize;
+                let x_off = if flip_horizontal { i } else { 7 - i };
+                let buf_x = (x_pos as usize) + (x_off as usize);
+                if buf_x >= 256 {
+                    continue;
+                }
                 let mut entry = &mut s.ppu.sprite_buffer[buf_x];
                 if entry.id == 0xFF || (entry.color & 0xF) == 0 {
                     // No sprite is here yet, so put this one.
