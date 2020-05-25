@@ -274,24 +274,23 @@ fn sprite_evaluation(s: &mut State) {
                 (0xFF, 0xFF, 0xFF, 0xFF)
             };
 
-            let sprite_table = s.ppu.flag_sprite_table_addr;
+            let mut sprite_table = s.ppu.flag_sprite_table_addr;
             let mut tile_row = s.ppu.scanline - (y_pos as u16);
+            let mut tile = tile;
+            let flip_vertical = attribute & 0x80 > 0;
 
             if s.ppu.flag_sprite_size > 0 {
-                // (TODO) 8x16 sprites
-                /*
-                spriteTable = tile & 0x1
-                tile = tile & 0xFE
-                if tileRow >= 8 {
-                    tile |= 1 - (attribute & 0x80 >> 7)
-                    tileRow += 8
+                sprite_table = tile & 0x1;
+                tile &= 0xFE;
+                if tile_row >= 8 {
+                    tile |= (flip_vertical as u8) ^ 0x1;
+                    tile_row += 8;
                 } else {
-                    tile |= attribute & 0x80 >> 7
+                    tile |= flip_vertical as u8;
                 }
-                */
             }
 
-            if attribute & 0x80 > 0 {
+            if flip_vertical {
                 // Flip vertically.
                 tile_row = 7 - tile_row;
             }
