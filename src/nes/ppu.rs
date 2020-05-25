@@ -377,6 +377,17 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             s.ppu_poke(s.ppu.v, data);
             s.ppu.v += if s.ppu.flag_vram_increment == 0 { 1 } else { 32 };
         }
+        0x4014 => {
+            // OAMDMA
+            let cpu_cycles = s.cpu.cycles;
+            let addr = (data as u16) << 8;
+            for i in 0..256 {
+                let data = s.cpu_peek(addr | (i as u16));
+                s.ppu.oam_1[s.ppu.oam_addr] = data;
+                s.ppu.oam_addr = (s.ppu.oam_addr + 1) & 0xFF;
+            }
+            s.cpu.cycles = cpu_cycles + 513 + (cpu_cycles & 0x1);
+        }
         _ => {}
     };
 }

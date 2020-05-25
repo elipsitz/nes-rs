@@ -73,6 +73,7 @@ impl State {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize] = val,
             0x2000..=0x3FFF => ppu::poke_register(self, addr & 0x7, val),
+            0x4014 => { /* OAMDMA */ ppu::poke_register(self, addr, val); }
             0x4000..=0x401F => {} /* TODO: APU, input */
             _ /* 0x4020..=0xFFFF */ => self.mapper.poke(addr, val),
         }
