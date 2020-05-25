@@ -288,6 +288,11 @@ fn sprite_evaluation(s: &mut State) {
             let lo = s.ppu_peek(pattern_addr);
             let hi = s.ppu_peek(pattern_addr + 8);
 
+            // Don't draw non-existent sprites.
+            if y_pos == 0xFF {
+                return;
+            }
+
             // TODO: sprite background priority.
             // TODO: sprite 0 needs more info.
             for i in 0..8 {
