@@ -13,6 +13,21 @@ const COLORS: [u32; 64] = [
     0xccd278, 0xb4de78, 0xa8e290, 0x98e2b4, 0xa0d6e4, 0xa0a2a0, 0x000000, 0x000000,
 ];
 
+#[derive(Copy, Clone)]
+struct SpriteBufferData {
+    id: u8,
+    color: u8,
+}
+
+impl Default for SpriteBufferData {
+    fn default() -> Self {
+        SpriteBufferData {
+            id: 0xFF,
+            color: 0,
+        }
+    }
+}
+
 pub struct PpuState {
     scanline: u16,
     tick: u16,
@@ -35,8 +50,7 @@ pub struct PpuState {
     sprite_eval_m: usize,
     sprite_eval_read: u8,
     sprite_eval_scanline_count: usize,
-    sprite_buffer_data: [u8; 256], // Sprite scanline buffer.
-    sprite_buffer_id: [u8; 256], // The sprite ID for each pixel.
+    sprite_buffer: [SpriteBufferData; 256], // Sprite scanline buffer.
 
     pub palette: [u8; 32],
     bg_data: [u8; 24],
@@ -88,8 +102,7 @@ impl PpuState {
             sprite_eval_m: 0,
             sprite_eval_read: 0,
             sprite_eval_scanline_count: 0,
-            sprite_buffer_data: [0; 256],
-            sprite_buffer_id: [0; 256],
+            sprite_buffer: [SpriteBufferData::default(); 256],
             palette: [0; 32],
             bg_data: [0; 24],
             bg_data_index: 0,
@@ -242,8 +255,7 @@ fn sprite_evaluation(s: &mut State) {
         256 => {
             // Internal: set up scanline buffer state.
             for i in 0..256 {
-                s.ppu.sprite_buffer_data[i] = 0;
-                s.ppu.sprite_buffer_id[i] = 0xFF;
+                s.ppu.sprite_buffer[i] = SpriteBufferData::default();
             }
         }
         257..=320 if (s.ppu.tick & 0x7 == 0) => {
@@ -303,10 +315,11 @@ fn sprite_evaluation(s: &mut State) {
                     i
                 };
                 let buf_x = (x_pos + x_off) as usize;
-                if s.ppu.sprite_buffer_id[buf_x] == 0xFF || (s.ppu.sprite_buffer_data[buf_x] & 0xF) == 0 {
+                let mut entry = &mut s.ppu.sprite_buffer[buf_x];
+                if entry.id == 0xFF || (entry.color & 0xF) == 0 {
                     // No sprite is here yet, so put this one.
-                    s.ppu.sprite_buffer_id[buf_x] = n as u8;
-                    s.ppu.sprite_buffer_data[buf_x] = 0b10000
+                    entry.id = n as u8;
+                    entry.color = 0b10000
                         | (((lo & (1 << i)) > 0) as u8) << 0
                         | (((hi & (1 << i)) > 0) as u8) << 1
                         | (attribute & 0b11) << 2;
@@ -350,7 +363,7 @@ fn render_pixel(s: &mut State) {
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
     let mut bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
-    let mut sprite_pixel = s.ppu.sprite_buffer_data[x];
+    let mut sprite_pixel = s.ppu.sprite_buffer[x].color;
 
     /*if y < 128 {
         let mut addr = 0
