@@ -288,18 +288,20 @@ fn sprite_evaluation(s: &mut State) {
             let lo = s.ppu_peek(pattern_addr);
             let hi = s.ppu_peek(pattern_addr + 8);
 
-            if attribute & 0x40 > 0 {
-                // TODO: Flip horizontally.
-            }
-
             // TODO: sprite background priority.
             // TODO: sprite 0 needs more info.
             for i in 0..8 {
-                let buf_x = (x_pos + i) as usize;
+                let x_off = if attribute & 0x40 == 0 {
+                    7 - i
+                } else {
+                    // Flipped horizontally.
+                    i
+                };
+                let buf_x = (x_pos + x_off) as usize;
                 if s.ppu.sprite_buffer_id[buf_x] == 0xFF {
                     // No sprite is here yet, so put this one.
                     s.ppu.sprite_buffer_id[buf_x] = n as u8;
-                    s.ppu.sprite_buffer_data[buf_x] = 0
+                    s.ppu.sprite_buffer_data[buf_x] = 0b10000
                         | (((lo & (1 << i)) > 0) as u8) << 0
                         | (((hi & (1 << i)) > 0) as u8) << 1
                         | (attribute & 0b11) << 2;
