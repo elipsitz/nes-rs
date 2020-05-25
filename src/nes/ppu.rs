@@ -17,6 +17,7 @@ const COLORS: [u32; 64] = [
 struct SpriteBufferData {
     id: u8,
     color: u8,
+    priority: bool,
 }
 
 impl Default for SpriteBufferData {
@@ -24,6 +25,7 @@ impl Default for SpriteBufferData {
         SpriteBufferData {
             id: 0xFF,
             color: 0,
+            priority: false,
         }
     }
 }
@@ -305,7 +307,6 @@ fn sprite_evaluation(s: &mut State) {
                 return;
             }
 
-            // TODO: sprite background priority.
             // TODO: sprite 0 needs more info.
             for i in 0..8 {
                 let x_off = if attribute & 0x40 == 0 {
@@ -323,6 +324,7 @@ fn sprite_evaluation(s: &mut State) {
                         | (((lo & (1 << i)) > 0) as u8) << 0
                         | (((hi & (1 << i)) > 0) as u8) << 1
                         | (attribute & 0b11) << 2;
+                    entry.priority = (attribute & 0b00100000) == 0;
                 }
             }
 
@@ -396,13 +398,7 @@ fn render_pixel(s: &mut State) {
         bg_pixel
     } else {
         // TODO: sprite 0 hit
-        // TODO: sprite/background priority.
-        let sprite_priority = true;
-        if sprite_priority {
-            sprite_pixel
-        } else {
-            bg_pixel
-        }
+        if s.ppu.sprite_buffer[x].priority { sprite_pixel } else { bg_pixel }
     };
 
     let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
