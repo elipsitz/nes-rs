@@ -298,7 +298,7 @@ fn sprite_evaluation(s: &mut State) {
                     i
                 };
                 let buf_x = (x_pos + x_off) as usize;
-                if s.ppu.sprite_buffer_id[buf_x] == 0xFF {
+                if s.ppu.sprite_buffer_id[buf_x] == 0xFF || (s.ppu.sprite_buffer_data[buf_x] & 0xF) == 0 {
                     // No sprite is here yet, so put this one.
                     s.ppu.sprite_buffer_id[buf_x] = n as u8;
                     s.ppu.sprite_buffer_data[buf_x] = 0b10000
