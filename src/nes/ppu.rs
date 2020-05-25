@@ -18,6 +18,7 @@ struct SpriteBufferData {
     id: u8,
     color: u8,
     priority: bool,
+    sprite0: bool,
 }
 
 impl Default for SpriteBufferData {
@@ -26,6 +27,7 @@ impl Default for SpriteBufferData {
             id: 0xFF,
             color: 0,
             priority: false,
+            sprite0: false,
         }
     }
 }
@@ -42,7 +44,7 @@ pub struct PpuState {
     data_buffer: u8,
     latch: u8,
     sprite_overflow: u8,
-    sprite0_hit: u8,
+    sprite0_hit: bool,
     vblank: u8,
 
     oam_addr: usize,
@@ -52,6 +54,7 @@ pub struct PpuState {
     sprite_eval_m: usize,
     sprite_eval_read: u8,
     sprite_eval_scanline_count: usize,
+    sprite_eval_has_sprite0: bool, // Whether sprite0 is at oam_2[0]
     sprite_buffer: [SpriteBufferData; 256], // Sprite scanline buffer.
 
     pub palette: [u8; 32],
@@ -95,7 +98,7 @@ impl PpuState {
             data_buffer: 0,
             latch: 0,
             sprite_overflow: 0,
-            sprite0_hit: 0,
+            sprite0_hit: false,
             vblank: 0,
             oam_addr: 0,
             oam_1: [0; 256],
@@ -104,6 +107,7 @@ impl PpuState {
             sprite_eval_m: 0,
             sprite_eval_read: 0,
             sprite_eval_scanline_count: 0,
+            sprite_eval_has_sprite0: false,
             sprite_buffer: [SpriteBufferData::default(); 256],
             palette: [0; 32],
             bg_data: [0; 24],
@@ -138,6 +142,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
         if s.ppu.scanline == 261 {
             // Pre-render.
             if s.ppu.tick == 1 {
+                s.ppu.sprite0_hit = false;
                 s.ppu.vblank = 0;
                 s.ppu.is_rendering = true;
             }
@@ -218,6 +223,7 @@ fn sprite_evaluation(s: &mut State) {
             s.ppu.sprite_eval_n = 0;
             s.ppu.sprite_eval_m = 0;
             s.ppu.sprite_eval_scanline_count = 0;
+            s.ppu.sprite_eval_has_sprite0 = false;
         }
         65..=256 if (s.ppu.sprite_eval_n < 64 && s.ppu.sprite_eval_scanline_count < 8) => {
             // Ticks 65-256: fetch sprite data from primary OAM into secondary OAM.
@@ -244,7 +250,9 @@ fn sprite_evaluation(s: &mut State) {
                         }
                     }
                     3 => {
-                        // TODO: if this is sprite 0, save some info about sprite0 hit?
+                        if s.ppu.sprite_eval_n == 0 {
+                            s.ppu.sprite_eval_has_sprite0 = true;
+                        }
                         s.ppu.sprite_eval_n += 1;
                         s.ppu.sprite_eval_m = 0;
                         s.ppu.sprite_eval_scanline_count += 1;
@@ -306,7 +314,6 @@ fn sprite_evaluation(s: &mut State) {
                 return;
             }
 
-            // TODO: sprite 0 needs more info.
             for i in 0..8 {
                 let x_off = if attribute & 0x40 == 0 {
                     7 - i
@@ -324,6 +331,7 @@ fn sprite_evaluation(s: &mut State) {
                         | (((hi & (1 << i)) > 0) as u8) << 1
                         | (attribute & 0b11) << 2;
                     entry.priority = (attribute & 0b00100000) == 0;
+                    entry.sprite0 = s.ppu.sprite_eval_has_sprite0 && (n == 0);
                 }
             }
 
@@ -396,7 +404,9 @@ fn render_pixel(s: &mut State) {
     } else if !sprite_visible {
         bg_pixel
     } else {
-        // TODO: sprite 0 hit
+        if s.ppu.sprite_buffer[x].sprite0 {
+            s.ppu.sprite0_hit = true;
+        }
         if s.ppu.sprite_buffer[x].priority { sprite_pixel } else { bg_pixel }
     };
 
@@ -441,7 +451,7 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
             // PPUSTATUS
             let data = (s.ppu.latch & 0x1F)
                 | (s.ppu.sprite_overflow) << 5
-                | (s.ppu.sprite0_hit) << 6
+                | (s.ppu.sprite0_hit as u8) << 6
                 | (s.ppu.vblank) << 7;
 
             s.ppu.vblank = 0;
