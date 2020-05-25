@@ -83,7 +83,13 @@ impl State {
         let addr = addr & 0x3FFF;
         // https://wiki.nesdev.com/w/index.php/PPU_memory_map
         match addr {
-            0x3F00..=0x3FFF => self.ppu.palette[(addr & 0x1F) as usize],
+            0x3F00..=0x3FFF => {
+                let mut index = (addr & 0x1F) as usize;
+                if index == 0x10 || index == 0x14 || index == 0x18 || index == 0x1C {
+                    index -= 0x10;
+                }
+                self.ppu.palette[index]
+            },
             _ => self.mapper.peek(addr),
         }
     }
@@ -92,7 +98,13 @@ impl State {
         let addr = addr & 0x3FFF;
         // https://wiki.nesdev.com/w/index.php/PPU_memory_map
         match addr {
-            0x3F00..=0x3FFF => { self.ppu.palette[(addr & 0x1F) as usize] = data },
+            0x3F00..=0x3FFF => {
+                let mut index = (addr & 0x1F) as usize;
+                if index == 0x10 || index == 0x14 || index == 0x18 || index == 0x1C {
+                    index -= 0x10;
+                }
+                self.ppu.palette[index] = data
+            },
             _ => self.mapper.poke(addr, data),
         }
     }

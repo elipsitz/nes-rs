@@ -181,7 +181,7 @@ fn increment_scroll_x(ppu: &mut PpuState) {
 
 fn render_pixel(s: &mut State) {
     //let bg_pixel = (s.ppu.background_data >> (32 + ((7 - s.ppu.x) * 4)) as u64 & 0xF);
-    let bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
+    let mut bg_pixel = s.ppu.bg_data[s.ppu.bg_data_index]; // TODO: fine-x scroll
     let x = (s.ppu.tick - 1) as usize;
     let y = s.ppu.scanline as usize;
 
@@ -197,10 +197,18 @@ fn render_pixel(s: &mut State) {
         let hi = s.ppu_peek((addr + 8) as u16);
         col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
     }*/
-    let col = bg_pixel;
+    if x < 8 && !s.ppu.flag_show_background_left {
+        bg_pixel = 0;
+    }
+
+    let bg_visible = (bg_pixel & 0x3) != 0;
+    let col = if bg_visible {
+        bg_pixel
+    } else {
+        0
+    };
 
     let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
-
     let frame = &mut s.ppu.frame_buffer.0;
     let i = ((y * FRAME_WIDTH) + x) * FRAME_DEPTH;
     frame[i + 0] = ((pixel & 0xFF0000) >> 16) as u8;
