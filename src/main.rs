@@ -25,14 +25,16 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
+    let mut paused = false;
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
-                sdl2::event::Event::Quit {..} => {
-                    break 'running
-                },
+                sdl2::event::Event::Quit {..} => { break 'running; }
+                sdl2::event::Event::KeyDown { keycode: Some(sdl2::keyboard::Keycode::Space), .. } => {
+                    paused = !paused;
+                }
                 _ => {}
             }
         }
@@ -40,11 +42,15 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         // Update
         let frame_start = Instant::now();
 
-        nes.emulate_frame();
-        let buf = nes.get_frame_buffer();
-        texture.update(None, buf, (WIDTH * 4) as usize).map_err(|e| e.to_string())?;
-        canvas.copy(&texture, None, None)?;
-        canvas.present();
+        if !paused {
+            nes.emulate_frame();
+            let buf = nes.get_frame_buffer();
+            texture
+                .update(None, buf, (WIDTH * 4) as usize)
+                .map_err(|e| e.to_string())?;
+            canvas.copy(&texture, None, None)?;
+            canvas.present();
+        }
 
         // FPS display
         frame_counter += 1;
