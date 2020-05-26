@@ -72,6 +72,8 @@ impl State {
         let data = match addr {
             0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize],
             0x2000..=0x3FFF => ppu::peek_register(self, addr & 0x7),
+            0x4016 => self.controller1.read(),
+            0x4017 => self.controller2.read(),
             0x4000..=0x401F => /* TODO: APU, input */ 0,
             _ /*0x4020..=0xFFFF*/ => self.mapper.peek(addr),
         };
@@ -87,6 +89,7 @@ impl State {
             0x0000..=0x1FFF => self.ram[(addr & 0x7FF) as usize] = val,
             0x2000..=0x3FFF => ppu::poke_register(self, addr & 0x7, val),
             0x4014 => { /* OAMDMA */ ppu::poke_register(self, addr, val); }
+            0x4016 => { controller::write(self, val) }
             0x4000..=0x401F => {} /* TODO: APU, input */
             _ /* 0x4020..=0xFFFF */ => self.mapper.poke(addr, val),
         }
