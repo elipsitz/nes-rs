@@ -67,6 +67,7 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
                         paused = true;
                         single_step = true;
                     }
+                    Keycode::Escape => { break 'running; }
                     _ => {}
                 }
                 _ => {}
