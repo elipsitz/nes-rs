@@ -26,14 +26,20 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
     let mut paused = false;
+    let mut single_step = false;
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit {..} => { break 'running; }
-                sdl2::event::Event::KeyDown { keycode: Some(sdl2::keyboard::Keycode::Space), .. } => {
-                    paused = !paused;
+                sdl2::event::Event::KeyDown { keycode: Some(code), .. } => match code {
+                    sdl2::keyboard::Keycode::Space => { paused = !paused; }
+                    sdl2::keyboard::Keycode::Tab => {
+                        paused = true;
+                        single_step = true;
+                    }
+                    _ => {}
                 }
                 _ => {}
             }
@@ -42,7 +48,8 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         // Update
         let frame_start = Instant::now();
 
-        if !paused {
+        if !paused || single_step {
+            single_step = false;
             nes.emulate_frame();
             let buf = nes.get_frame_buffer();
             texture
