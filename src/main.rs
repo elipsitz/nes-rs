@@ -1,6 +1,10 @@
 extern crate sdl2;
 
 use std::time::{Duration, Instant};
+use std::collections::HashSet;
+
+use sdl2::keyboard::Keycode;
+use crate::nes::controller::ControllerState;
 
 mod nes;
 
@@ -30,12 +34,16 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
+        // Update
+        let frame_start = Instant::now();
+
+        // Check events.
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit {..} => { break 'running; }
                 sdl2::event::Event::KeyDown { keycode: Some(code), .. } => match code {
-                    sdl2::keyboard::Keycode::Space => { paused = !paused; }
-                    sdl2::keyboard::Keycode::Tab => {
+                    Keycode::Space => { paused = !paused; }
+                    Keycode::Tab => {
                         paused = true;
                         single_step = true;
                     }
@@ -45,8 +53,9 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
             }
         }
 
-        // Update
-        let frame_start = Instant::now();
+        let _keys: HashSet<Keycode> = event_pump.keyboard_state().pressed_scancodes().filter_map(Keycode::from_scancode).collect();
+        nes.set_controller1_state(ControllerState::default());
+        nes.set_controller2_state(ControllerState::default());
 
         if !paused || single_step {
             single_step = false;

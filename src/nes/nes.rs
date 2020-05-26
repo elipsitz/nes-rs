@@ -2,6 +2,7 @@ use super::cartridge::Cartridge;
 use super::mapper;
 use super::cpu;
 use super::ppu;
+use super::controller;
 
 pub const FRAME_DEPTH: usize = 4;
 pub const FRAME_WIDTH: usize = 256;
@@ -17,6 +18,8 @@ pub struct State {
     pub cpu: cpu::CpuState,
     pub ppu: ppu::PpuState,
     pub mapper: Box<dyn mapper::Mapper>,
+    pub controller1: controller::ControllerState,
+    pub controller2: controller::ControllerState,
 }
 
 impl Nes {
@@ -39,6 +42,14 @@ impl Nes {
         }
     }
 
+    pub fn set_controller1_state(&mut self, state: controller::ControllerState) {
+        self.state.controller1 = state;
+    }
+
+    pub fn set_controller2_state(&mut self, state: controller::ControllerState) {
+        self.state.controller2 = state;
+    }
+
     pub fn get_frame_buffer(&self) -> &[u8; FRAME_SIZE] {
         &self.state.ppu.frame_buffer
     }
@@ -51,6 +62,8 @@ impl State {
             cpu: cpu::CpuState::new(),
             ppu: ppu::PpuState::new(),
             mapper: mapper::make_mapper(cart),
+            controller1: controller::ControllerState::new(),
+            controller2: controller::ControllerState::new(),
         }
     }
 
