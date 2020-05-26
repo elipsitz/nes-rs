@@ -1,7 +1,6 @@
 extern crate sdl2;
 
 use std::time::{Duration, Instant};
-use std::collections::HashSet;
 
 use sdl2::keyboard::Keycode;
 use crate::nes::controller::ControllerState;
@@ -11,6 +10,27 @@ mod nes;
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
 const SCALE: u32 = 2;
+
+fn get_controller_state(event_pump: &sdl2::EventPump) -> (ControllerState, ControllerState) {
+    let mut controller1 = ControllerState::default();
+    let controller2 = ControllerState::default();
+    let keyboard_state = event_pump.keyboard_state();
+    let keys = keyboard_state.pressed_scancodes().filter_map(Keycode::from_scancode);
+    for key in keys {
+        match key {
+            Keycode::Z => { controller1.a = true; }
+            Keycode::X => { controller1.b = true; }
+            Keycode::RShift => { controller1.select = true; }
+            Keycode::Return => { controller1.start = true; }
+            Keycode::Up => { controller1.up = true; }
+            Keycode::Down => { controller1.down = true; }
+            Keycode::Left => { controller1.left = true; }
+            Keycode::Right => { controller1.right = true; }
+            _ => {}
+        }
+    }
+    (controller1, controller2)
+}
 
 fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -53,9 +73,9 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
             }
         }
 
-        let _keys: HashSet<Keycode> = event_pump.keyboard_state().pressed_scancodes().filter_map(Keycode::from_scancode).collect();
-        nes.set_controller1_state(ControllerState::default());
-        nes.set_controller2_state(ControllerState::default());
+        let (controller1, controller2) = get_controller_state(&event_pump);
+        nes.set_controller1_state(controller1);
+        nes.set_controller2_state(controller2);
 
         if !paused || single_step {
             single_step = false;

@@ -1,4 +1,4 @@
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ControllerState {
     pub a: bool,
     pub b: bool,
