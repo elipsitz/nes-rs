@@ -4,3 +4,5 @@ mod ppu;
 mod mapper;
 pub mod controller;
 pub mod nes;
+
+mod mapper_nrom;
