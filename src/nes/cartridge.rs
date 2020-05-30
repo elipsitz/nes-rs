@@ -33,14 +33,21 @@ impl Cartridge {
 
         let mut index: usize = 16;
         let prg_rom = &data[index..(index + (16384 * header.prg_rom_size as usize))];
+        let prg_rom = prg_rom.to_vec();
         index += 16384 * header.prg_rom_size as usize;
         let chr_rom = &data[index..(index + (8192 * header.chr_rom_size as usize))];
+        let mut chr_rom = chr_rom.to_vec();
         index += 8192 * header.chr_rom_size as usize;
         let extra_data = &data[index..data.len()];
 
+        if header.chr_rom_size == 0 {
+            // 8KB of CHR RAM
+            chr_rom = vec![0; 8192];
+        }
+
         Cartridge {
-            prg_rom: prg_rom.to_vec(),
-            chr_rom: chr_rom.to_vec(),
+            prg_rom,
+            chr_rom,
             mapper_id: (header.flags7 & 0xF0) | (header.flags6 >> 4),
             mirror_mode: (header.flags6 & 0x1) | (header.flags6 & 0x8 >> 2),
             header,
