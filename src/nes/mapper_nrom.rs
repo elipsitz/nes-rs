@@ -1,27 +1,23 @@
 use super::cartridge::Cartridge;
-use super::mapper::Mapper;
+use super::mapper::{Mapper, MirrorMode, translate_vram};
 
 pub struct MapperNrom {
     cart: Cartridge,
     vram: [u8; 2048],
+    mirror_mode: MirrorMode,
 }
 
 impl MapperNrom {
-    fn translate_vram(&self, addr: u16) -> u16 {
-        if self.cart.mirror_mode == 0 {
-            // Horizontal mirroring.
-            (addr & 0x3FF) | ((addr & 0x800) >> 1)
-        } else {
-            // Vertical mirroring.
-            addr & 0x7FF
-        }
-    }
-
     pub fn new(cart: Cartridge) -> MapperNrom {
-        assert!(cart.mirror_mode == 0 || cart.mirror_mode == 1);
+        let mirror_mode = match cart.mirror_mode {
+            0 => MirrorMode::MirrorHorizontal,
+            1 => MirrorMode::MirrorVertical,
+            _ => panic!("Unsupported cart mirror mode: {}", cart.mirror_mode)
+        };
         MapperNrom {
             cart,
             vram: [0; 2048],
+            mirror_mode
         }
     }
 }
@@ -31,7 +27,7 @@ impl Mapper for MapperNrom {
         match addr {
             // PPU
             0x0000..=0x1FFF => self.cart.chr_rom[addr as usize],
-            0x2000..=0x3EFF => self.vram[self.translate_vram(addr) as usize],
+            0x2000..=0x3EFF => self.vram[translate_vram(self.mirror_mode, addr)],
 
             // CPU
             0x8000..=0xFFFF => {
@@ -47,7 +43,7 @@ impl Mapper for MapperNrom {
         match addr {
             // PPU
             0x0000..=0x1FFF => self.cart.chr_rom[addr as usize] = val,
-            0x2000..=0x3EFF => self.vram[self.translate_vram(addr) as usize] = val,
+            0x2000..=0x3EFF => self.vram[translate_vram(self.mirror_mode, addr)] = val,
             _ => {}
         };
     }
