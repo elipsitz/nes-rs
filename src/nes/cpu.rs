@@ -468,9 +468,10 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
 
         let _cycle = s.cpu.cycles;
         let opcode = s.cpu_peek(s.cpu.pc);
-        /* println!(
-            "{:04X}  {:02X} ______________________________________ A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} PPU:_______ CYC:{}",
-            s.cpu.pc, opcode, s.cpu.a, s.cpu.x, s.cpu.y, status_pack(s, false), s.cpu.sp, _cycle
+        /*println!(
+            "{:04X}  {:02X} ______________________________________ A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} PPU:{:3},{:3} CYC:{}",
+            s.cpu.pc, opcode, s.cpu.a, s.cpu.x, s.cpu.y, status_pack(s, false), s.cpu.sp,
+            s.ppu.tick, s.ppu.scanline, _cycle
         );*/
         s.cpu.pc += 1;
 

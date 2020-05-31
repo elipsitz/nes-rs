@@ -33,8 +33,8 @@ impl Default for SpriteBufferData {
 }
 
 pub struct PpuState {
-    scanline: u16,
-    tick: u16,
+    pub scanline: u16,
+    pub tick: u16,
     pub frames: u64,
     cycles: u64,
 

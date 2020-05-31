@@ -27,8 +27,8 @@ impl Nes {
         let mut nes = Nes {
             state: State::new(cart),
         };
-        nes.state.cpu.cycles = 7;
         nes.state.cpu.pc = cpu::vector_reset(&mut nes.state);
+        nes.state.cpu.cycles = 7;
         println!("[nes] Reset to pc = {:#04X}", nes.state.cpu.pc);
         // nes.state.cpu.pc = 0xC000u16; // nestest auto mode
         nes
