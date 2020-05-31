@@ -288,6 +288,7 @@ fn sprite_evaluation(s: &mut State) {
             let flip_vertical = attribute & 0x80 > 0;
 
             if s.ppu.flag_sprite_size > 0 {
+                // 16 height
                 sprite_table = tile & 0x1;
                 tile &= 0xFE;
                 if tile_row >= 8 {
@@ -296,12 +297,14 @@ fn sprite_evaluation(s: &mut State) {
                 } else {
                     tile |= flip_vertical as u8;
                 }
+            } else {
+                // 8 height
+                if flip_vertical {
+                    // Flip vertically.
+                    tile_row = 7 - tile_row;
+                }
             }
 
-            if flip_vertical {
-                // Flip vertically.
-                tile_row = 7 - tile_row;
-            }
             let pattern_addr = 0
                 | tile_row
                 | ((tile as u16) << 4)
