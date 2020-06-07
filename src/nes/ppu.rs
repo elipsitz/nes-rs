@@ -152,6 +152,8 @@ pub fn emulate(s: &mut State, cycles: u64) {
                 // v: IHGF.ED CBA..... = t: IHGF.ED CBA.....
                 s.ppu.v = (s.ppu.v & 0x841F) | (s.ppu.t & 0x7BE0);
             }
+
+            // XXX: This should make the same memory fetches (tiles and sprites) as visible lines.
         }
 
         if (s.ppu.scanline <= 239 || s.ppu.scanline == 261) && rendering_enabled {
@@ -272,16 +274,21 @@ fn sprite_evaluation(s: &mut State) {
             // Ticks 257-320: fetch selected sprite data from pattern tables.
             let n = ((s.ppu.tick - 257) / 8) as usize;
 
-            if n >= s.ppu.sprite_eval_scanline_count {
-                // Don't draw non-existant sprites.
-                // XXX: these should still read from the pattern table though.
-                return;
-            }
-
-            let y_pos = s.ppu.oam_2[n * 4 + 0];
+            let mut y_pos = s.ppu.oam_2[n * 4 + 0];
             let mut tile = s.ppu.oam_2[n * 4 + 1];
-            let attribute = s.ppu.oam_2[n * 4 + 2];
-            let x_pos = s.ppu.oam_2[n * 4 + 3];
+            let mut attribute = s.ppu.oam_2[n * 4 + 2];
+            let mut x_pos = s.ppu.oam_2[n * 4 + 3];
+
+            if n >= s.ppu.sprite_eval_scanline_count {
+                // Dummy reads from pattern table.
+                // "y-pos" is 0xFF (or sprite 63's Y for first non-existent sprite)
+                // but that doesn't work well for computing the address to read in the
+                // pattern table, so just set it to the current scanline.
+                y_pos = s.ppu.scanline as u8;
+                tile = 0xFF;
+                attribute = 0xFF;
+                x_pos = 0xFF;
+            }
 
             let mut sprite_table = s.ppu.flag_sprite_table_addr;
             let mut tile_row = s.ppu.scanline - (y_pos as u16);
@@ -313,7 +320,7 @@ fn sprite_evaluation(s: &mut State) {
             let hi = s.ppu_peek(pattern_addr + 8);
 
             // Don't draw non-existent sprites.
-            if y_pos == 0xFF {
+            if x_pos == 0xFF {
                 return;
             }
 
