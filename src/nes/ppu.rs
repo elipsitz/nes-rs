@@ -346,7 +346,7 @@ fn sprite_evaluation(s: &mut State) {
                     continue;
                 }
                 let mut entry = &mut s.ppu.sprite_buffer[buf_x];
-                if entry.id == 0xFF || (entry.color & 0xF) == 0 {
+                if entry.id == 0xFF || (entry.color & 0b11) == 0 {
                     // No sprite is here yet, so put this one.
                     entry.id = n as u8;
                     entry.color = 0b10000
