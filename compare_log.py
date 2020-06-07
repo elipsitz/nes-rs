@@ -1,10 +1,14 @@
 import subprocess
+import sys
 
-with open("roms/test/nestest.log") as f:
+rom_path = sys.argv[1]
+log_path = sys.argv[2]
+
+with open(log_path) as f:
     expected = [x.strip() for x in f]
 
 p = subprocess.run(
-    ["cargo", "run", "roms/test/nestest.nes"],
+    ["cargo", "run", rom_path, "--cpu-log"],
     capture_output=True, text=True
 )
 actual = [x.strip() for x in p.stdout.split("\n") if ("_" * 10) in x]
