@@ -464,6 +464,9 @@ pub fn emulate(s: &mut State, min_cycles: u64) -> u64 {
     while s.cpu.cycles < end_cycles {
         if s.cpu.pending_interrupt != InterruptKind::None {
             handle_interrupt(s);
+        } else if !s.cpu.status_i && s.mapper.check_irq() {
+            s.cpu.pending_interrupt = InterruptKind::IRQ;
+            handle_interrupt(s);
         }
 
         let _cycle = s.cpu.cycles;

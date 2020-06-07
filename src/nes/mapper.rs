@@ -3,6 +3,10 @@ use super::cartridge::Cartridge;
 pub trait Mapper {
     fn peek(&mut self, addr: u16) -> u8;
     fn poke(&mut self, addr: u16, val: u8);
+
+    fn check_irq(&self) -> bool {
+        false
+    }
 }
 
 #[allow(dead_code)]
