@@ -38,6 +38,9 @@ pub struct PpuState {
     pub frames: u64,
     cycles: u64,
 
+    // Last CPU cycle that we emulated at.
+    last_cpu_cycle: u64,
+
     pub frame_buffer: [u8; FRAME_SIZE],
 
     is_rendering: bool,
@@ -93,6 +96,7 @@ impl PpuState {
             tick: 0,
             frames: 0,
             cycles: 0,
+            last_cpu_cycle: 7,
             frame_buffer: [0; FRAME_SIZE],
             is_rendering: false,
             data_buffer: 0,
@@ -134,7 +138,14 @@ impl PpuState {
     }
 }
 
+pub fn catch_up(s: &mut State) {
+    let cpu_cycles = s.cpu.cycles - s.ppu.last_cpu_cycle;
+    emulate(s, cpu_cycles * 3);
+}
+
 pub fn emulate(s: &mut State, cycles: u64) {
+    s.ppu.last_cpu_cycle = s.cpu.cycles;
+
     let mut cycles_left = cycles;
     while cycles_left > 0 {
         let rendering_enabled = s.ppu.flag_render_sprites || s.ppu.flag_render_background;
@@ -459,6 +470,8 @@ fn fetch_tile(s: &mut State) {
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
+    catch_up(s);
+
     s.ppu.latch = match register {
         2 => {
             // PPUSTATUS
