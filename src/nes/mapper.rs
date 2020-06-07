@@ -29,6 +29,7 @@ pub fn make_mapper(cart: Cartridge) -> Box<dyn Mapper> {
     match cart.mapper_id {
         0 => Box::new(super::mapper_nrom::MapperNrom::new(cart)),
         1 => Box::new(super::mapper_mmc1::MapperMmc1::new(cart)),
+        4 => Box::new(super::mapper_mmc3::MapperMmc3::new(cart)),
         _ => panic!("Unknown mapper ID: {}", cart.mapper_id)
     }
 }

@@ -7,3 +7,4 @@ pub mod nes;
 
 mod mapper_nrom;
 mod mapper_mmc1;
+mod mapper_mmc3;
