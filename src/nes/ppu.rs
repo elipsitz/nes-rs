@@ -202,7 +202,10 @@ pub fn emulate(s: &mut State, cycles: u64) {
         // Increment counters.
         s.ppu.cycles += 1;
         s.ppu.tick += 1;
-        if s.ppu.tick == 341 || (s.ppu.scanline == 261 && (s.ppu.frames & 1 > 0) && s.ppu.tick == 340) {
+        if s.ppu.scanline == 261 && (s.ppu.frames & 1 > 0) && s.ppu.tick == 340 && rendering_enabled {
+            s.ppu.tick += 1;
+        }
+        if s.ppu.tick == 341 {
             s.ppu.tick = 0;
             s.ppu.scanline += 1;
             if s.ppu.scanline > 261 {
