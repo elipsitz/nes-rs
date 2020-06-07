@@ -13,6 +13,10 @@ pub struct Nes {
     pub state: State,
 }
 
+pub struct Debug {
+    pub cpu_log: bool,
+}
+
 pub struct State {
     pub ram: [u8; 2048],
     pub cpu: cpu::CpuState,
@@ -20,12 +24,13 @@ pub struct State {
     pub mapper: Box<dyn mapper::Mapper>,
     pub controller1: controller::ControllerState,
     pub controller2: controller::ControllerState,
+    pub debug: Debug,
 }
 
 impl Nes {
-    pub fn new(cart: Cartridge) -> Nes {
+    pub fn new(debug: Debug, cart: Cartridge) -> Nes {
         let mut nes = Nes {
-            state: State::new(cart),
+            state: State::new(debug, cart),
         };
         nes.state.cpu.pc = cpu::vector_reset(&mut nes.state);
         nes.state.cpu.cycles = 7;
@@ -56,7 +61,7 @@ impl Nes {
 }
 
 impl State {
-    pub fn new(cart: Cartridge) -> State {
+    pub fn new(debug: Debug, cart: Cartridge) -> State {
         State {
             ram: [0; 2048],
             cpu: cpu::CpuState::new(),
@@ -64,6 +69,7 @@ impl State {
             mapper: mapper::make_mapper(cart),
             controller1: controller::ControllerState::new(),
             controller2: controller::ControllerState::new(),
+            debug,
         }
     }
 

@@ -118,12 +118,19 @@ fn main() {
             .help("Path to the rom file to use")
             .required(true)
             .index(1))
+        .arg(clap::Arg::with_name("cpu-log")
+            .long("cpu-log")
+            .help("Print CPU execution log"))
         .get_matches();
 
     let rom_path: &str = args.value_of("rom").unwrap();
     println!("[main] Loading rom at path: {}", rom_path);
 
+    let debug = nes::nes::Debug {
+        cpu_log: args.is_present("cpu-log"),
+    };
+
     let cart = nes::cartridge::Cartridge::load(rom_path);
-    let nes = nes::nes::Nes::new(cart);
+    let nes = nes::nes::Nes::new(debug, cart);
     run_emulator(nes).unwrap();
 }
