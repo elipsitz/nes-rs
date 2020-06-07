@@ -1,3 +1,4 @@
+extern crate clap;
 extern crate sdl2;
 
 use std::time::{Duration, Instant};
@@ -111,14 +112,15 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let args = clap::App::new("nes_rs")
+        .author("Eli Lipsitz <eli.lipsitz@gmail.com>")
+        .arg(clap::Arg::with_name("rom")
+            .help("Path to the rom file to use")
+            .required(true)
+            .index(1))
+        .get_matches();
 
-    if args.len() != 2 {
-        eprintln!("Usage: {} [path to rom file]", args[0]);
-        std::process::exit(1);
-    }
-
-    let rom_path: &str = &args[1];
+    let rom_path: &str = args.value_of("rom").unwrap();
     println!("[main] Loading rom at path: {}", rom_path);
 
     let cart = nes::cartridge::Cartridge::load(rom_path);
