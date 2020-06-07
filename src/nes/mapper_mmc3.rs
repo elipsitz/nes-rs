@@ -15,6 +15,13 @@ pub struct MapperMmc3 {
     offset_prg: [usize; 4],
     // 8 x 1 KB banks
     offset_chr: [usize; 8],
+
+    irq_enabled: bool,
+    irq_pending: bool,
+    irq_reload: bool,
+    irq_counter: u8,
+    irq_latch: u8,
+    last_a12: bool,
 }
 
 fn get_bank_offset(total_size: usize, bank_size: usize, bank: i32) -> usize {
@@ -37,6 +44,13 @@ impl MapperMmc3 {
 
             offset_prg: [0; 4],
             offset_chr: [0; 8],
+
+            irq_enabled: false,
+            irq_pending: false,
+            irq_reload: false,
+            irq_counter: 0,
+            irq_latch: 0,
+            last_a12: false,
         };
         mapper.update_banks();
         mapper
@@ -97,23 +111,52 @@ impl MapperMmc3 {
             // PRG RAM Protect
             0xA000..=0xBFFF if (addr % 2 == 1) => self.reg_ram_protect = val,
             // IRQ latch
-            0xC000..=0xDFFF if (addr % 2 == 0) => { /* TODO */ },
+            0xC000..=0xDFFF if (addr % 2 == 0) => self.irq_latch = val,
             // IRQ reload
-            0xC000..=0xDFFF if (addr % 2 == 1) => { /* TODO */ },
+            0xC000..=0xDFFF if (addr % 2 == 1) => self.irq_reload = true,
             // IRQ disable
-            0xE000..=0xFFFF if (addr % 2 == 0) => { /* TODO */ },
+            0xE000..=0xFFFF if (addr % 2 == 0) => {
+                self.irq_enabled = false;
+                self.irq_pending = true;
+            },
             // IRQ enable
-            0xE000..=0xFFFF if (addr % 2 == 1) => { /* TODO */ },
+            0xE000..=0xFFFF if (addr % 2 == 1) => self.irq_enabled = true,
             _ => unreachable!()
         }
+    }
+
+    fn check_a12(&mut self, addr: u16) {
+        // Check if PPR A12 is high, for counting scanlines.
+        // Once A12 goes high, it decrements the IRQ counter. It's filtered though --
+        // it's after A12 goes high for the first time after 2 CPU clock cycles.
+        // But we don't track that, so let's just assume it's when it goes high at all.
+        let a12 = (addr & 0b1000000000000) > 0;
+
+        if a12 && !self.last_a12 {
+            if self.irq_counter == 0 || self.irq_reload {
+                self.irq_counter = self.irq_latch;
+                self.irq_reload = false;
+            } else {
+                self.irq_counter -= 1;
+            }
+
+            if self.irq_counter == 0 && self.irq_enabled {
+                self.irq_pending = true;
+            }
+        }
+        self.last_a12 = a12;
     }
 }
 
 impl Mapper for MapperMmc3 {
+
+
     fn peek(&mut self, addr: u16) -> u8 {
         match addr {
             // PPU
             0x0000..=0x1FFF => {
+                self.check_a12(addr);
+
                 let bank = ((addr & 0xFC00) >> 10) as usize;
                 let offset = (addr & 0x3FF) as usize;
                 let location = self.offset_chr[bank] + offset;
@@ -137,6 +180,8 @@ impl Mapper for MapperMmc3 {
         match addr {
             // PPU
             0x0000..=0x1FFF => {
+                self.check_a12(addr);
+
                 let bank = ((addr & 0xF800) >> 11) as usize;
                 let offset = (addr & 0x7FF) as usize;
                 let location = self.offset_chr[bank] + offset;
@@ -149,5 +194,9 @@ impl Mapper for MapperMmc3 {
             0x8000..=0xFFFF => self.write_register(addr, val),
             _ => {}
         };
+    }
+
+    fn check_irq(&self) -> bool {
+        self.irq_pending
     }
 }
