@@ -120,7 +120,7 @@ impl MapperMmc3 {
             // IRQ disable
             0xE000..=0xFFFF if (addr % 2 == 0) => {
                 self.irq_enabled = false;
-                self.irq_pending = true;
+                self.irq_pending = false;
             },
             // IRQ enable
             0xE000..=0xFFFF if (addr % 2 == 1) => self.irq_enabled = true,
