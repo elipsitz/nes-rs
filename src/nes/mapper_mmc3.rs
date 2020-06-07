@@ -93,7 +93,10 @@ impl MapperMmc3 {
     fn write_register(&mut self, addr: u16, val: u8) {
         match addr {
             // Bank Select
-            0x8000..=0x9FFF if (addr % 2 == 0) => self.reg_bank_select = val,
+            0x8000..=0x9FFF if (addr % 2 == 0) => {
+                self.reg_bank_select = val;
+                self.update_banks();
+            },
             // Bank Data
             0x8000..=0x9FFF if (addr % 2 == 1) => {
                 let bank = self.reg_bank_select & 0b111;
