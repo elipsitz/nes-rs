@@ -69,6 +69,7 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
                         single_step = true;
                     }
                     Keycode::Escape => { break 'running; }
+                    Keycode::Backquote => { nes.debug_toggle_overlay(); }
                     _ => {}
                 }
                 _ => {}
@@ -126,9 +127,8 @@ fn main() {
     let rom_path: &str = args.value_of("rom").unwrap();
     println!("[main] Loading rom at path: {}", rom_path);
 
-    let debug = nes::nes::Debug {
-        cpu_log: args.is_present("cpu-log"),
-    };
+    let mut debug = nes::debug::Debug::default();
+    debug.cpu_log = args.is_present("cpu-log");
 
     let cart = nes::cartridge::Cartridge::load(rom_path);
     let nes = nes::nes::Nes::new(debug, cart);

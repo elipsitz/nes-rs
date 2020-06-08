@@ -3,6 +3,7 @@ use super::mapper;
 use super::cpu;
 use super::ppu;
 use super::controller;
+use super::debug;
 
 pub const FRAME_DEPTH: usize = 4;
 pub const FRAME_WIDTH: usize = 256;
@@ -13,10 +14,6 @@ pub struct Nes {
     pub state: State,
 }
 
-pub struct Debug {
-    pub cpu_log: bool,
-}
-
 pub struct State {
     pub ram: [u8; 2048],
     pub cpu: cpu::CpuState,
@@ -24,11 +21,11 @@ pub struct State {
     pub mapper: Box<dyn mapper::Mapper>,
     pub controller1: controller::ControllerState,
     pub controller2: controller::ControllerState,
-    pub debug: Debug,
+    pub debug: debug::Debug,
 }
 
 impl Nes {
-    pub fn new(debug: Debug, cart: Cartridge) -> Nes {
+    pub fn new(debug: debug::Debug, cart: Cartridge) -> Nes {
         let mut nes = Nes {
             state: State::new(debug, cart),
         };
@@ -58,10 +55,14 @@ impl Nes {
     pub fn get_frame_buffer(&self) -> &[u8; FRAME_SIZE] {
         &self.state.ppu.frame_buffer
     }
+
+    pub fn debug_toggle_overlay(&mut self) {
+        self.state.debug.toggle_overlay();
+    }
 }
 
 impl State {
-    pub fn new(debug: Debug, cart: Cartridge) -> State {
+    pub fn new(debug: debug::Debug, cart: Cartridge) -> State {
         State {
             ram: [0; 2048],
             cpu: cpu::CpuState::new(),
