@@ -1,14 +1,15 @@
 use super::nes;
 use sdl2::pixels::Color;
-use sdl2::rect::{Point};
+use sdl2::rect::{Point, Rect};
 
 #[derive(Debug)]
 pub enum Overlay {
     None,
     PatternTable,
+    Sprites,
 }
 
-const OVERLAYS: [Overlay; 2] = [Overlay::None, Overlay::PatternTable];
+const OVERLAYS: [Overlay; 3] = [Overlay::None, Overlay::PatternTable, Overlay::Sprites];
 
 #[derive(Default)]
 pub struct Debug {
@@ -47,6 +48,23 @@ pub fn render_overlay(s: &mut nes::State, canvas: &mut sdl2::render::SurfaceCanv
                     canvas.set_draw_color(Color::RGB(col, col, col));
                     canvas.draw_point(Point::new(x, y))?;
                 }
+            }
+        }
+        Overlay::Sprites => {
+            for i in (0..256).step_by(4) {
+                let x = s.ppu.oam_1[i + 3] as i32;
+                let y = (s.ppu.oam_1[i + 0] as i32) + 1;
+                let attr = s.ppu.oam_1[i + 2];
+                let priority = (attr & 0b00100000) > 0;
+                if priority {
+                    // Magenta: behind background
+                    canvas.set_draw_color(Color::RGB(255, 0, 255));
+                } else {
+                    // Lime: in front of background
+                    canvas.set_draw_color(Color::RGB(0, 255, 0));
+                }
+                let height = 8 << s.ppu.flag_sprite_size;
+                canvas.draw_rect(Rect::new(x, y, 8, height as u32))?;
             }
         }
         _ => {}

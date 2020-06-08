@@ -51,7 +51,7 @@ pub struct PpuState {
     vblank: u8,
 
     oam_addr: usize,
-    oam_1: [u8; 256],
+    pub oam_1: [u8; 256],
     oam_2: [u8; 32],
     sprite_eval_n: usize,
     sprite_eval_m: usize,
@@ -74,7 +74,7 @@ pub struct PpuState {
     flag_vram_increment: u8,
     flag_sprite_table_addr: u8,
     flag_background_table_addr: u8,
-    flag_sprite_size: u8,
+    pub flag_sprite_size: u8,
     flag_master_slave: u8,
     flag_generate_nmi: bool,
 
