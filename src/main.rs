@@ -98,6 +98,7 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         if !paused || single_step {
             single_step = false;
             nes.emulate_frame();
+            frame_counter += 1;
             let buf = nes.get_frame_buffer();
             texture
                 .update(None, buf, (WIDTH * 4) as usize)
@@ -113,10 +114,11 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
             }
 
             canvas.present();
+        } else {
+            std::thread::sleep(Duration::from_millis(50));
         }
 
         // FPS display
-        frame_counter += 1;
         if Instant::now() - frame_timer > Duration::from_secs(1) {
             canvas.window_mut()
                 .set_title(&format!("NES - FPS: {}", frame_counter))
