@@ -312,18 +312,13 @@ fn sprite_evaluation(s: &mut State) {
                 // 16 height
                 sprite_table = tile & 0x1;
                 tile &= 0xFE;
-                if tile_row >= 8 {
-                    tile |= (flip_vertical as u8) ^ 0x1;
-                    tile_row += 8;
-                } else {
-                    tile |= flip_vertical as u8;
-                }
-            } else {
-                // 8 height
-                if flip_vertical {
-                    // Flip vertically.
-                    tile_row = 7 - tile_row;
-                }
+
+                tile |= ((tile_row >= 8) ^ flip_vertical) as u8;
+                tile_row &= 0x7;
+            }
+
+            if flip_vertical {
+                tile_row = 7 - tile_row;
             }
 
             let pattern_addr = 0
@@ -331,7 +326,7 @@ fn sprite_evaluation(s: &mut State) {
                 | ((tile as u16) << 4)
                 | ((sprite_table as u16) << 12);
             let lo = s.ppu_peek(pattern_addr);
-            let hi = s.ppu_peek(pattern_addr + 8);
+            let hi = s.ppu_peek(pattern_addr | 0x8);
 
             // Don't draw non-existent sprites.
             if x_pos == 0xFF {
