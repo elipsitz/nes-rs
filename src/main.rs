@@ -45,7 +45,11 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    let mut canvas = window
+        .into_canvas()
+        .present_vsync()
+        .build()
+        .map_err(|e| e.to_string())?;
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
         .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ABGR8888, WIDTH, HEIGHT)
@@ -69,9 +73,6 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
-        // Update
-        let frame_start = Instant::now();
-
         // Check events.
         for event in event_pump.poll_iter() {
             match event {
@@ -122,13 +123,6 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
             frame_counter = 0;
             frame_timer = Instant::now();
-        }
-
-        let frame_end = Instant::now();
-        let frame_time = frame_end.duration_since(frame_start);
-        let period = Duration::from_nanos(1_000_000_000 / 60);
-        if period > frame_time {
-            std::thread::sleep(period - frame_time);
         }
     }
 
