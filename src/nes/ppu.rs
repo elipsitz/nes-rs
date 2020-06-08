@@ -402,8 +402,8 @@ fn render_pixel(s: &mut State) {
         }
     }
 
-    let bg_visible = (bg_pixel & 0x3) != 0;
-    let sprite_visible = (sprite_pixel & 0x3) != 0;
+    let bg_visible = ((bg_pixel & 0x3) != 0) && s.ppu.flag_render_background;
+    let sprite_visible = ((sprite_pixel & 0x3) != 0) && s.ppu.flag_render_sprites;
     let col = if !bg_visible && !sprite_visible {
         0
     } else if !bg_visible {
