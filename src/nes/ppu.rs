@@ -404,17 +404,16 @@ fn render_pixel(s: &mut State) {
 
     let bg_visible = ((bg_pixel & 0x3) != 0) && s.ppu.flag_render_background;
     let sprite_visible = ((sprite_pixel & 0x3) != 0) && s.ppu.flag_render_sprites;
-    let col = if !bg_visible && !sprite_visible {
-        0
-    } else if !bg_visible {
-        sprite_pixel
-    } else if !sprite_visible {
-        bg_pixel
-    } else {
-        if s.ppu.sprite_buffer[x].sprite0 {
-            s.ppu.sprite0_hit = true;
+    let col = match (bg_visible, sprite_visible) {
+        (false, false) => 0,
+        (true, false) => bg_pixel,
+        (false, true) => sprite_pixel,
+        (true, true) => {
+            if s.ppu.sprite_buffer[x].sprite0 {
+                s.ppu.sprite0_hit = true;
+            }
+            if s.ppu.sprite_buffer[x].priority { sprite_pixel } else { bg_pixel }
         }
-        if s.ppu.sprite_buffer[x].priority { sprite_pixel } else { bg_pixel }
     };
 
     let pixel = COLORS[s.ppu.palette[(col & 0x1F) as usize] as usize];
