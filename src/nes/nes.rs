@@ -59,6 +59,10 @@ impl Nes {
     pub fn debug_toggle_overlay(&mut self) {
         self.state.debug.toggle_overlay();
     }
+
+    pub fn debug_render_overlay(&self, canvas: &mut sdl2::render::SurfaceCanvas) -> Result<(), String> {
+        debug::render_overlay(&self.state, canvas)
+    }
 }
 
 impl State {

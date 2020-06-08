@@ -1,3 +1,7 @@
+use super::nes;
+use sdl2::pixels::Color;
+use sdl2::rect::Rect;
+
 #[derive(Debug)]
 pub enum Overlay {
     None,
@@ -18,4 +22,13 @@ impl Debug {
 
         println!("[debug] Overlay: {:?}", OVERLAYS[self.overlay]);
     }
+}
+
+pub fn render_overlay(state: &nes::State, canvas: &mut sdl2::render::SurfaceCanvas) -> Result<(), String> {
+    canvas.set_draw_color(Color::RGBA(0, 0, 0, 0));
+    canvas.clear();
+    match OVERLAYS[state.debug.overlay] {
+        _ => {}
+    }
+    Ok(())
 }

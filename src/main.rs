@@ -5,6 +5,9 @@ use std::time::{Duration, Instant};
 
 use sdl2::keyboard::Keycode;
 use crate::nes::controller::ControllerState;
+use sdl2::surface::Surface;
+use sdl2::pixels::Color;
+use sdl2::render::BlendMode;
 
 mod nes;
 
@@ -47,6 +50,14 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let mut texture = texture_creator
         .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ABGR8888, WIDTH, HEIGHT)
         .map_err(|e| e.to_string())?;
+    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    canvas.clear();
+
+    let debug_surface = Surface::new(WIDTH * SCALE, HEIGHT * SCALE, sdl2::pixels::PixelFormatEnum::ABGR8888)
+        .map_err(|e| e.to_string())?;
+    let mut debug_canvas = debug_surface.into_canvas()?;
+    debug_canvas.set_scale(SCALE as f32, SCALE as f32)?;
+    texture.set_blend_mode(BlendMode::Blend);
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
@@ -88,6 +99,13 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
                 .update(None, buf, (WIDTH * 4) as usize)
                 .map_err(|e| e.to_string())?;
             canvas.copy(&texture, None, None)?;
+
+            nes.debug_render_overlay(&mut debug_canvas)?;
+            texture
+                .update(None, debug_canvas.surface().without_lock().unwrap(), (WIDTH * SCALE * 4) as usize)
+                .map_err(|e| e.to_string())?;
+            canvas.copy(&texture, None, None)?;
+
             canvas.present();
         }
 
