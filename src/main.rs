@@ -56,8 +56,11 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let debug_surface = Surface::new(WIDTH * SCALE, HEIGHT * SCALE, sdl2::pixels::PixelFormatEnum::ABGR8888)
         .map_err(|e| e.to_string())?;
     let mut debug_canvas = debug_surface.into_canvas()?;
+    let mut debug_texture = texture_creator
+        .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ABGR8888, WIDTH * SCALE, HEIGHT * SCALE)
+        .map_err(|e| e.to_string())?;
     debug_canvas.set_scale(SCALE as f32, SCALE as f32)?;
-    texture.set_blend_mode(BlendMode::Blend);
+    debug_texture.set_blend_mode(BlendMode::Blend);
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
@@ -100,11 +103,13 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
             canvas.copy(&texture, None, None)?;
 
-            nes.debug_render_overlay(&mut debug_canvas)?;
-            texture
-                .update(None, debug_canvas.surface().without_lock().unwrap(), (WIDTH * SCALE * 4) as usize)
-                .map_err(|e| e.to_string())?;
-            canvas.copy(&texture, None, None)?;
+            if nes.debug_render_enabled() {
+                nes.debug_render_overlay(&mut debug_canvas)?;
+                debug_texture
+                    .update(None, debug_canvas.surface().without_lock().unwrap(), (WIDTH * SCALE * 4) as usize)
+                    .map_err(|e| e.to_string())?;
+                canvas.copy(&debug_texture, None, None)?;
+            }
 
             canvas.present();
         }

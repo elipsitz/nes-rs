@@ -393,18 +393,6 @@ fn render_pixel(s: &mut State) {
     let mut bg_pixel = s.ppu.bg_data[bg_index];
     let mut sprite_pixel = s.ppu.sprite_buffer[x].color;
 
-    /*if y < 128 {
-        let mut addr = 0
-            | (y % 8)
-            | (x % 128 / 8) << 4
-            | (y % 128 / 8) << 8;
-        if x >= 128 {
-            addr |= 0x1000;
-        }
-        let lo = s.ppu_peek(addr as u16);
-        let hi = s.ppu_peek((addr + 8) as u16);
-        col = (((lo << (x % 8) as u8) & 0x80) >> 7) | (((hi << (x % 8) as u8) & 0x80) >> 6);
-    }*/
     if x < 8 {
         if !s.ppu.flag_show_background_left {
             bg_pixel = 0;
