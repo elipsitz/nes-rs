@@ -32,6 +32,7 @@ impl Default for SpriteBufferData {
     }
 }
 
+#[allow(dead_code)]
 pub struct PpuState {
     pub scanline: u16,
     pub tick: u16,

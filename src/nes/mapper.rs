@@ -25,7 +25,7 @@ pub fn translate_vram(mode: MirrorMode, addr: u16) -> usize {
         MirrorMode::MirrorVertical => addr & 0x7FF,
         MirrorMode::MirrorSingleA => addr & 0x3FF,
         MirrorMode::MirrorSingleB => 0x400 | (addr & 0x3FF),
-        _ => panic!("Unsupported mirror mode: {:?}")
+        _ => panic!("Unsupported mirror mode: {:?}", mode)
     }) as usize
 }
 

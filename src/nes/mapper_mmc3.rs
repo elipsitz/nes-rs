@@ -8,6 +8,7 @@ pub struct MapperMmc3 {
 
     reg_bank_select: u8,
     reg_bank_data: [u8; 8],
+    #[allow(dead_code)]
     reg_ram_protect: u8,
     mirror_mode: MirrorMode,
 
