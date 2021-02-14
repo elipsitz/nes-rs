@@ -1,3 +1,4 @@
+mod apu;
 pub mod cartridge;
 pub mod controller;
 mod cpu;

@@ -1,3 +1,4 @@
+use super::apu;
 use super::cartridge::Cartridge;
 use super::controller;
 use super::cpu;
@@ -18,6 +19,7 @@ pub struct State {
     pub ram: [u8; 2048],
     pub cpu: cpu::CpuState,
     pub ppu: ppu::PpuState,
+    pub apu: apu::ApuState,
     pub mapper: Box<dyn mapper::Mapper>,
     pub controller1: controller::ControllerState,
     pub controller2: controller::ControllerState,
@@ -78,6 +80,7 @@ impl State {
             ram: [0; 2048],
             cpu: cpu::CpuState::new(),
             ppu: ppu::PpuState::new(),
+            apu: apu::ApuState::new(),
             mapper: mapper::make_mapper(cart),
             controller1: controller::ControllerState::new(),
             controller2: controller::ControllerState::new(),
