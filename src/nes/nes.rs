@@ -50,6 +50,7 @@ impl Nes {
             let _cycles = cpu::emulate(&mut self.state, 1);
             ppu::catch_up(&mut self.state);
         }
+        apu::catch_up(&mut self.state);
     }
 
     pub fn set_controller1_state(&mut self, state: controller::ControllerState) {
@@ -105,7 +106,7 @@ impl State {
             0x2000..=0x3FFF => ppu::peek_register(self, addr & 0x7),
             0x4016 => self.controller1.read(),
             0x4017 => self.controller2.read(),
-            0x4000..=0x401F => /* TODO: APU, input */ 0,
+            0x4000..=0x401F => apu::peek_register(self, addr),
             _ /*0x4020..=0xFFFF*/ => self.mapper.peek(addr),
         };
         self.cpu.cycles += 1;
@@ -121,7 +122,7 @@ impl State {
             0x2000..=0x3FFF => ppu::poke_register(self, addr & 0x7, val),
             0x4014 => { /* OAMDMA */ ppu::poke_register(self, addr, val); }
             0x4016 => { controller::write(self, val) }
-            0x4000..=0x401F => {} /* TODO: APU, input */
+            0x4000..=0x401F => apu::poke_register(self, addr, val),
             _ /* 0x4020..=0xFFFF */ => self.mapper.poke(addr, val),
         }
         self.cpu.cycles += 1;
