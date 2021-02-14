@@ -1,11 +1,11 @@
 pub mod cartridge;
-mod cpu;
-mod ppu;
-mod mapper;
 pub mod controller;
-pub mod nes;
+mod cpu;
 pub mod debug;
+mod mapper;
+pub mod nes;
+mod ppu;
 
-mod mapper_nrom;
 mod mapper_mmc1;
 mod mapper_mmc3;
+mod mapper_nrom;

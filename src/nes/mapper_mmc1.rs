@@ -1,5 +1,5 @@
 use super::cartridge::Cartridge;
-use super::mapper::{Mapper, MirrorMode, translate_vram};
+use super::mapper::{translate_vram, Mapper, MirrorMode};
 
 pub struct MapperMmc1 {
     cart: Cartridge,
@@ -36,7 +36,7 @@ impl MapperMmc1 {
             offset_prg0: 0,
             offset_prg1: 0,
             offset_chr0: 0,
-            offset_chr1: 0
+            offset_chr1: 0,
         };
         mapper.update_mapping();
         mapper
@@ -48,7 +48,7 @@ impl MapperMmc1 {
             1 => MirrorMode::MirrorSingleB,
             2 => MirrorMode::MirrorVertical,
             3 => MirrorMode::MirrorHorizontal,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let prg_mode = (self.reg_control & 0b01100) >> 2;
@@ -69,7 +69,7 @@ impl MapperMmc1 {
                 self.offset_prg0 = (16 * 1024) * ((self.reg_prg as usize) & 0b01111);
                 self.offset_prg1 = self.cart.prg_rom.len() - (16 * 1024);
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
         self.offset_prg0 %= self.cart.prg_rom.len();
         self.offset_prg1 %= self.cart.prg_rom.len();
@@ -83,7 +83,7 @@ impl MapperMmc1 {
                 self.offset_chr0 = (self.reg_chr0 as usize) * (4 * 1024);
                 self.offset_chr1 = (self.reg_chr1 as usize) * (4 * 1024);
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
         self.offset_chr0 %= self.cart.chr_rom.len();
         self.offset_chr1 %= self.cart.chr_rom.len();
@@ -91,10 +91,10 @@ impl MapperMmc1 {
 
     fn handle_control(&mut self, register: u16, data: u8) {
         match register {
-            0 => { self.reg_control = data }
-            1 => { self.reg_chr0 = data }
-            2 => { self.reg_chr1 = data }
-            3 => { self.reg_prg = data }
+            0 => self.reg_control = data,
+            1 => self.reg_chr0 = data,
+            2 => self.reg_chr1 = data,
+            3 => self.reg_prg = data,
             _ => {}
         }
         self.update_mapping();
@@ -113,7 +113,7 @@ impl Mapper for MapperMmc1 {
             0x6000..=0x7FFF => self.ram[(addr & 0x1FFF) as usize],
             0x8000..=0xBFFF => self.cart.prg_rom[self.offset_prg0 + (addr & 0x3FFF) as usize],
             0xC000..=0xFFFF => self.cart.prg_rom[self.offset_prg1 + (addr & 0x3FFF) as usize],
-            _ => 0
+            _ => 0,
         }
     }
 

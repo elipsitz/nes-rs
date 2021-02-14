@@ -1,16 +1,16 @@
-use super::nes::{State, FRAME_SIZE};
 use super::cpu;
-use crate::nes::nes::{FRAME_WIDTH, FRAME_DEPTH};
+use super::nes::{State, FRAME_SIZE};
+use crate::nes::nes::{FRAME_DEPTH, FRAME_WIDTH};
 
 const COLORS: [u32; 64] = [
-    0x545454, 0x001e74, 0x081090, 0x300088, 0x440064, 0x5c0030, 0x540400, 0x3c1800,
-    0x202a00, 0x083a00, 0x004000, 0x003c00, 0x00323c, 0x000000, 0x000000, 0x000000,
-    0x989698, 0x084cc4, 0x3032ec, 0x5c1ee4, 0x8814b0, 0xa01464, 0x982220, 0x783c00,
-    0x545a00, 0x287200, 0x087c00, 0x007628, 0x006678, 0x000000, 0x000000, 0x000000,
-    0xeceeec, 0x4c9aec, 0x787cec, 0xb062ec, 0xe454ec, 0xec58b4, 0xec6a64, 0xd48820,
-    0xa0aa00, 0x74c400, 0x4cd020, 0x38cc6c, 0x38b4cc, 0x3c3c3c, 0x000000, 0x000000,
-    0xeceeec, 0xa8ccec, 0xbcbcec, 0xd4b2ec, 0xecaeec, 0xecaed4, 0xecb4b0, 0xe4c490,
-    0xccd278, 0xb4de78, 0xa8e290, 0x98e2b4, 0xa0d6e4, 0xa0a2a0, 0x000000, 0x000000,
+    0x545454, 0x001e74, 0x081090, 0x300088, 0x440064, 0x5c0030, 0x540400, 0x3c1800, 0x202a00,
+    0x083a00, 0x004000, 0x003c00, 0x00323c, 0x000000, 0x000000, 0x000000, 0x989698, 0x084cc4,
+    0x3032ec, 0x5c1ee4, 0x8814b0, 0xa01464, 0x982220, 0x783c00, 0x545a00, 0x287200, 0x087c00,
+    0x007628, 0x006678, 0x000000, 0x000000, 0x000000, 0xeceeec, 0x4c9aec, 0x787cec, 0xb062ec,
+    0xe454ec, 0xec58b4, 0xec6a64, 0xd48820, 0xa0aa00, 0x74c400, 0x4cd020, 0x38cc6c, 0x38b4cc,
+    0x3c3c3c, 0x000000, 0x000000, 0xeceeec, 0xa8ccec, 0xbcbcec, 0xd4b2ec, 0xecaeec, 0xecaed4,
+    0xecb4b0, 0xe4c490, 0xccd278, 0xb4de78, 0xa8e290, 0x98e2b4, 0xa0d6e4, 0xa0a2a0, 0x000000,
+    0x000000,
 ];
 
 #[derive(Copy, Clone)]
@@ -134,7 +134,7 @@ impl PpuState {
             flag_render_background: false,
             flag_emphasize_red: false,
             flag_emphasize_green: false,
-            flag_emphasize_blue: false
+            flag_emphasize_blue: false,
         }
     }
 }
@@ -194,7 +194,10 @@ pub fn emulate(s: &mut State, cycles: u64) {
                 // copy horizontal bits from t to v
                 // v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
                 s.ppu.v = (s.ppu.v & 0xFBE0) | (s.ppu.t & 0x41F);
-            } else if ((s.ppu.tick >= 321 && s.ppu.tick <= 336) || (s.ppu.tick >= 1 && s.ppu.tick <= 256)) && (s.ppu.tick % 8 == 0) {
+            } else if ((s.ppu.tick >= 321 && s.ppu.tick <= 336)
+                || (s.ppu.tick >= 1 && s.ppu.tick <= 256))
+                && (s.ppu.tick % 8 == 0)
+            {
                 increment_scroll_x(&mut s.ppu);
             }
         }
@@ -214,7 +217,8 @@ pub fn emulate(s: &mut State, cycles: u64) {
         // Increment counters.
         s.ppu.cycles += 1;
         s.ppu.tick += 1;
-        if s.ppu.scanline == 261 && (s.ppu.frames & 1 > 0) && s.ppu.tick == 340 && rendering_enabled {
+        if s.ppu.scanline == 261 && (s.ppu.frames & 1 > 0) && s.ppu.tick == 340 && rendering_enabled
+        {
             s.ppu.tick += 1;
         }
         if s.ppu.tick == 341 {
@@ -274,7 +278,9 @@ fn sprite_evaluation(s: &mut State) {
                         s.ppu.sprite_eval_m = 0;
                         s.ppu.sprite_eval_scanline_count += 1;
                     }
-                    _ => { s.ppu.sprite_eval_m += 1; }
+                    _ => {
+                        s.ppu.sprite_eval_m += 1;
+                    }
                 }
             }
             // TODO: do sprite overflow flag
@@ -322,10 +328,7 @@ fn sprite_evaluation(s: &mut State) {
                 tile_row = 7 - tile_row;
             }
 
-            let pattern_addr = 0
-                | tile_row
-                | ((tile as u16) << 4)
-                | ((sprite_table as u16) << 12);
+            let pattern_addr = 0 | tile_row | ((tile as u16) << 4) | ((sprite_table as u16) << 12);
             let lo = s.ppu_peek(pattern_addr);
             let hi = s.ppu_peek(pattern_addr | 0x8);
 
@@ -413,7 +416,11 @@ fn render_pixel(s: &mut State) {
             if s.ppu.sprite_buffer[x].sprite0 {
                 s.ppu.sprite0_hit = true;
             }
-            if s.ppu.sprite_buffer[x].priority { sprite_pixel } else { bg_pixel }
+            if s.ppu.sprite_buffer[x].priority {
+                sprite_pixel
+            } else {
+                bg_pixel
+            }
         }
     };
 
@@ -482,10 +489,14 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
                 s.ppu.data_buffer = s.ppu_peek(s.ppu.v - 0x1000);
             }
 
-            s.ppu.v += if s.ppu.flag_vram_increment == 0 { 1 } else { 32 };
+            s.ppu.v += if s.ppu.flag_vram_increment == 0 {
+                1
+            } else {
+                32
+            };
             data
         }
-        _ => s.ppu.latch
+        _ => s.ppu.latch,
     };
     s.ppu.latch
 }
@@ -496,8 +507,7 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         0 => {
             // PPUCTRL
             // t: ...BA.. ........ = d: ......BA
-            s.ppu.t = (s.ppu.t & 0b1111_0011_1111_1111)
-                | (((data & 0b11) as u16) << 10);
+            s.ppu.t = (s.ppu.t & 0b1111_0011_1111_1111) | (((data & 0b11) as u16) << 10);
 
             s.ppu.flag_vram_increment = (data >> 2) & 0x1;
             s.ppu.flag_sprite_table_addr = (data >> 3) & 0x1;
@@ -533,8 +543,7 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Register_controls
             if s.ppu.w == 0 {
                 // t: ....... ...HGFED = d: HGFED...
-                s.ppu.t = (s.ppu.t & 0b1111_1111_1110_0000)
-                    | ((data & 0b11111000) as u16 >> 3);
+                s.ppu.t = (s.ppu.t & 0b1111_1111_1110_0000) | ((data & 0b11111000) as u16 >> 3);
                 // x:              CBA = d: .....CBA
                 s.ppu.x = (data & 0b111) as u16;
                 s.ppu.w = 1;
@@ -549,8 +558,7 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         6 => {
             // PPUADDR
             if s.ppu.w == 0 {
-                s.ppu.t = (s.ppu.t & 0b1000_0000_1111_1111)
-                    | ((data & 0b0011_1111) as u16) << 8;
+                s.ppu.t = (s.ppu.t & 0b1000_0000_1111_1111) | ((data & 0b0011_1111) as u16) << 8;
                 s.ppu.w = 1;
             } else {
                 s.ppu.t = (s.ppu.t & 0xFF00) | (data as u16);
@@ -561,7 +569,11 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         7 => {
             // PPUDATA
             s.ppu_poke(s.ppu.v, data);
-            s.ppu.v += if s.ppu.flag_vram_increment == 0 { 1 } else { 32 };
+            s.ppu.v += if s.ppu.flag_vram_increment == 0 {
+                1
+            } else {
+                32
+            };
         }
         0x4014 => {
             // OAMDMA

@@ -1,9 +1,9 @@
 use super::cartridge::Cartridge;
-use super::mapper;
-use super::cpu;
-use super::ppu;
 use super::controller;
+use super::cpu;
 use super::debug;
+use super::mapper;
+use super::ppu;
 
 pub const FRAME_DEPTH: usize = 4;
 pub const FRAME_WIDTH: usize = 256;
@@ -60,7 +60,10 @@ impl Nes {
         self.state.debug.toggle_overlay();
     }
 
-    pub fn debug_render_overlay(&mut self, canvas: &mut sdl2::render::SurfaceCanvas) -> Result<(), String> {
+    pub fn debug_render_overlay(
+        &mut self,
+        canvas: &mut sdl2::render::SurfaceCanvas,
+    ) -> Result<(), String> {
         debug::render_overlay(&mut self.state, canvas)
     }
 
@@ -121,7 +124,7 @@ impl State {
                     index -= 0x10;
                 }
                 self.ppu.palette[index]
-            },
+            }
             _ => self.mapper.peek(addr),
         }
     }
@@ -136,7 +139,7 @@ impl State {
                     index -= 0x10;
                 }
                 self.ppu.palette[index] = data
-            },
+            }
             _ => self.mapper.poke(addr, data),
         }
     }

@@ -1,8 +1,8 @@
 use std::fs;
 
 pub struct RomHeader {
-    prg_rom_size: u8,  // in 16KB units
-    chr_rom_size: u8,  // in  8KB units
+    prg_rom_size: u8, // in 16KB units
+    chr_rom_size: u8, // in  8KB units
     flags6: u8,
     flags7: u8,
     _flags_ext: Vec<u8>,

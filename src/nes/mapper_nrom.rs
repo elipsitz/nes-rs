@@ -1,5 +1,5 @@
 use super::cartridge::Cartridge;
-use super::mapper::{Mapper, MirrorMode, translate_vram};
+use super::mapper::{translate_vram, Mapper, MirrorMode};
 
 pub struct MapperNrom {
     cart: Cartridge,
@@ -12,12 +12,12 @@ impl MapperNrom {
         let mirror_mode = match cart.mirror_mode {
             0 => MirrorMode::MirrorHorizontal,
             1 => MirrorMode::MirrorVertical,
-            _ => panic!("Unsupported cart mirror mode: {}", cart.mirror_mode)
+            _ => panic!("Unsupported cart mirror mode: {}", cart.mirror_mode),
         };
         MapperNrom {
             cart,
             vram: [0; 2048],
-            mirror_mode
+            mirror_mode,
         }
     }
 }
@@ -35,7 +35,7 @@ impl Mapper for MapperNrom {
                 let size = self.cart.prg_rom.len() as u16;
                 self.cart.prg_rom[(offset % size) as usize]
             }
-            _ => 0
+            _ => 0,
         }
     }
 
