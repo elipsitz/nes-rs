@@ -502,6 +502,8 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
 }
 
 pub fn poke_register(s: &mut State, register: u16, data: u8) {
+    catch_up(s);
+
     s.ppu.latch = data;
     match register {
         0 => {
