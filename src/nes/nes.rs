@@ -11,6 +11,12 @@ pub const FRAME_WIDTH: usize = 256;
 pub const FRAME_HEIGHT: usize = 240;
 pub const FRAME_SIZE: usize = FRAME_DEPTH * FRAME_WIDTH * FRAME_HEIGHT;
 
+/// Samples per second.
+pub const AUDIO_SAMPLE_RATE: usize = 48000;
+
+/// Samples per frame.
+pub const AUDIO_SAMPLES_PER_FRAME: usize = AUDIO_SAMPLE_RATE / 60;
+
 pub struct Nes {
     pub state: State,
 }
@@ -56,6 +62,10 @@ impl Nes {
 
     pub fn get_frame_buffer(&self) -> &[u8; FRAME_SIZE] {
         &self.state.ppu.frame_buffer
+    }
+
+    pub fn get_audio_buffer(&self) -> &[f32; AUDIO_SAMPLES_PER_FRAME] {
+        &self.state.apu.audio_buffer
     }
 
     pub fn debug_toggle_overlay(&mut self) {

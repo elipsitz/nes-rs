@@ -57,6 +57,7 @@ fn get_controller_state(event_pump: &sdl2::EventPump) -> (ControllerState, Contr
 fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let audio_subsystem = sdl_context.audio()?;
 
     let window = video_subsystem
         .window("NES", WIDTH * SCALE, HEIGHT * SCALE)
@@ -92,6 +93,14 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     debug_canvas.set_scale(SCALE as f32, SCALE as f32)?;
     debug_texture.set_blend_mode(BlendMode::Blend);
+
+    let audio_spec_desired = sdl2::audio::AudioSpecDesired {
+        freq: Some(nes::nes::AUDIO_SAMPLE_RATE as i32),
+        channels: Some(1),
+        samples: None,
+    };
+    let audio_device = audio_subsystem.open_queue::<f32, _>(None, &audio_spec_desired)?;
+    audio_device.resume();
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
@@ -142,6 +151,8 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
                 .update(None, buf, (WIDTH * 4) as usize)
                 .map_err(|e| e.to_string())?;
             canvas.copy(&texture, None, None)?;
+
+            audio_device.queue(nes.get_audio_buffer());
 
             if nes.debug_render_enabled() {
                 nes.debug_render_overlay(&mut debug_canvas)?;
