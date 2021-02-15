@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use super::apu;
 use super::cartridge::Cartridge;
 use super::controller;
@@ -67,7 +69,9 @@ impl Nes {
     }
 
     pub fn get_audio_buffer(&self) -> &[f32; AUDIO_SAMPLES_PER_FRAME] {
-        &self.state.apu.audio_buffer
+        (&self.state.apu.audio_buffer[0..AUDIO_SAMPLES_PER_FRAME])
+            .try_into()
+            .unwrap()
     }
 
     pub fn debug_toggle_overlay(&mut self) {

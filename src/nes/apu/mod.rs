@@ -3,10 +3,14 @@ use super::nes::{State, AUDIO_SAMPLES_PER_FRAME};
 mod pulse;
 
 const FRAME_INTERVAL: u64 = 7457;
+const FULL_AUDIO_BUFFER_LEN: usize = AUDIO_SAMPLES_PER_FRAME * 40;
 
 pub struct ApuState {
-    /// Audio buffer (one frame's worth).
+    /// Downsampled audio buffer (one frame's worth).
     pub audio_buffer: [f32; AUDIO_SAMPLES_PER_FRAME],
+    /// Non-downsampled audio buffer.
+    full_audio_buffer: [f32; FULL_AUDIO_BUFFER_LEN],
+    audio_index: usize,
     /// Number of CPU cycles in this frame.
     frame_cycle_counter: usize,
 
@@ -30,6 +34,8 @@ impl ApuState {
     pub fn new() -> ApuState {
         ApuState {
             audio_buffer: [0.0f32; AUDIO_SAMPLES_PER_FRAME],
+            full_audio_buffer: [0.0f32; FULL_AUDIO_BUFFER_LEN],
+            audio_index: 0,
             frame_cycle_counter: 0,
 
             last_cpu_cycle: 0,
@@ -49,18 +55,19 @@ impl ApuState {
 
 pub fn complete_frame(s: &mut State) {
     catch_up(s);
-    // Divide by average.
-    for i in s.apu.audio_buffer.iter_mut() {
-        *i *= 1.0 / 38.0;
+
+    // Downsample full buffer into audio_buffer (nearest neighbor).
+    let num_samples = s.apu.audio_index as f32;
+    for i in 0..AUDIO_SAMPLES_PER_FRAME {
+        let sample_index = ((i as f32) / (AUDIO_SAMPLES_PER_FRAME as f32)) * num_samples;
+        let sample = s.apu.full_audio_buffer[sample_index as usize];
+        s.apu.audio_buffer[i] = sample;
     }
 }
 
 pub fn start_frame(s: &mut State) {
     s.apu.frame_cycle_counter = 0;
-
-    for i in s.apu.audio_buffer.iter_mut() {
-        *i = 0.0;
-    }
+    s.apu.audio_index = 0;
 }
 
 pub fn catch_up(s: &mut State) {
@@ -126,9 +133,9 @@ pub fn emulate(s: &mut State, cycles: u64) {
         let pulse_out = 95.88f32 / ((8128f32 / (pulse1_out + pulse2_out)) + 100f32);
         let sample = pulse_out;
 
-        // ~38 per thing
-        let index = (s.apu.frame_cycle_counter / 38) as usize;
-        s.apu.audio_buffer[index] += sample;
+        // Write into the full audio buffer.
+        s.apu.full_audio_buffer[s.apu.audio_index] = sample;
+        s.apu.audio_index += 1;
     }
 }
 
