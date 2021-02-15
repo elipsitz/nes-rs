@@ -1,7 +1,11 @@
 extern crate clap;
 extern crate sdl2;
 
-use std::time::{Duration, Instant};
+use std::{
+    fs::File,
+    io::BufWriter,
+    time::{Duration, Instant},
+};
 
 use crate::nes::controller::ControllerState;
 use sdl2::keyboard::Keycode;
@@ -54,7 +58,10 @@ fn get_controller_state(event_pump: &sdl2::EventPump) -> (ControllerState, Contr
     (controller1, controller2)
 }
 
-fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
+fn run_emulator(
+    mut nes: nes::nes::Nes,
+    mut audio_out: Option<hound::WavWriter<BufWriter<File>>>,
+) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let audio_subsystem = sdl_context.audio()?;
@@ -153,6 +160,11 @@ fn run_emulator(mut nes: nes::nes::Nes) -> Result<(), String> {
             canvas.copy(&texture, None, None)?;
 
             audio_device.queue(nes.get_audio_buffer());
+            if let Some(f) = &mut audio_out {
+                for &sample in nes.get_audio_buffer() {
+                    f.write_sample(sample).unwrap();
+                }
+            }
 
             if nes.debug_render_enabled() {
                 nes.debug_render_overlay(&mut debug_canvas)?;
@@ -199,6 +211,12 @@ fn main() {
                 .long("cpu-log")
                 .help("Print CPU execution log"),
         )
+        .arg(
+            clap::Arg::with_name("audio-output")
+                .long("audio-output")
+                .takes_value(true)
+                .help("Output audio to a WAV file"),
+        )
         .get_matches();
 
     let rom_path: &str = args.value_of("rom").unwrap();
@@ -207,7 +225,17 @@ fn main() {
     let mut debug = nes::debug::Debug::default();
     debug.cpu_log = args.is_present("cpu-log");
 
+    let audio_out = args.value_of("audio-output").map(|filename| {
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: nes::nes::AUDIO_SAMPLE_RATE as u32,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        hound::WavWriter::create(filename, spec).unwrap()
+    });
+
     let cart = nes::cartridge::Cartridge::load(rom_path);
     let nes = nes::nes::Nes::new(debug, cart);
-    run_emulator(nes).unwrap();
+    run_emulator(nes, audio_out).unwrap();
 }
