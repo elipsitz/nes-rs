@@ -1,5 +1,3 @@
-use apu::start_frame;
-
 use super::apu;
 use super::cartridge::Cartridge;
 use super::controller;
