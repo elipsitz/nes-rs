@@ -1,5 +1,6 @@
 use super::nes::{State, AUDIO_SAMPLES_PER_FRAME};
 
+mod noise;
 mod pulse;
 mod triangle;
 
@@ -35,6 +36,7 @@ pub struct ApuState {
     pulse1: pulse::Pulse,
     pulse2: pulse::Pulse,
     triangle: triangle::Triangle,
+    noise: noise::Noise,
 }
 
 impl ApuState {
@@ -57,6 +59,7 @@ impl ApuState {
             pulse1: pulse::Pulse::new_pulse1(),
             pulse2: pulse::Pulse::new_pulse2(),
             triangle: triangle::Triangle::new(),
+            noise: noise::Noise::new(),
         }
     }
 }
@@ -135,12 +138,13 @@ pub fn emulate(s: &mut State, cycles: u64) {
 
         s.apu.pulse1.clock();
         s.apu.pulse2.clock();
+        s.apu.noise.clock();
 
         // Compute subunit outputs.
         let pulse1_out = s.apu.pulse1.output() as f32;
         let pulse2_out = s.apu.pulse2.output() as f32;
         let triangle_out = s.apu.triangle.output() as f32;
-        let noise_out = 0.0f32;
+        let noise_out = s.apu.noise.output() as f32;
         let dmc_out = 0.0f32;
 
         // Combine output. TODO make more efficient?
@@ -159,12 +163,14 @@ fn handle_frame_quarter(s: &mut State) {
     s.apu.pulse1.clock_frame_quarter();
     s.apu.pulse2.clock_frame_quarter();
     s.apu.triangle.clock_frame_quarter();
+    s.apu.noise.clock_frame_quarter();
 }
 
 fn handle_frame_half(s: &mut State) {
     s.apu.pulse1.clock_frame_half();
     s.apu.pulse2.clock_frame_half();
     s.apu.triangle.clock_frame_half();
+    s.apu.noise.clock_frame_half();
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
@@ -173,6 +179,7 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
         let val = (s.apu.pulse1.is_enabled() as u8)
             | ((s.apu.pulse2.is_enabled() as u8) << 1)
             | ((s.apu.triangle.is_enabled() as u8) << 2)
+            | ((s.apu.noise.is_enabled() as u8) << 3)
             | ((s.apu.irq_pending as u8) << 6);
         s.apu.irq_pending = false;
         val
@@ -188,10 +195,12 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         0x4000..=0x4003 => s.apu.pulse1.poke_register(register, data),
         0x4004..=0x4007 => s.apu.pulse2.poke_register(register, data),
         0x4008..=0x400B => s.apu.triangle.poke_register(register, data),
+        0x400C..=0x400F => s.apu.noise.poke_register(register, data),
         0x4015 => {
             s.apu.pulse1.set_enable_flag((data & 0b0000_0001) != 0);
             s.apu.pulse2.set_enable_flag((data & 0b0000_0010) != 0);
             s.apu.triangle.set_enable_flag((data & 0b0000_0100) != 0);
+            s.apu.noise.set_enable_flag((data & 0b0000_1000) != 0);
 
             // TODO: other channels
         }
