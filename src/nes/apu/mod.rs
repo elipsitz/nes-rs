@@ -17,6 +17,9 @@ pub struct ApuState {
     // Frame Counter
     sequence_counter: u64,
     next_seq_phase: usize,
+    sequencer_mode: u8,
+    irq_enabled: bool,
+    irq_pending: bool,
 
     // Units
     pulse1: pulse::Pulse,
@@ -34,6 +37,9 @@ impl ApuState {
 
             sequence_counter: FRAME_INTERVAL,
             next_seq_phase: 0,
+            sequencer_mode: 0,
+            irq_enabled: false,
+            irq_pending: false,
 
             pulse1: pulse::Pulse::new_pulse1(),
             pulse2: pulse::Pulse::new_pulse2(),
@@ -69,7 +75,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
         // Frame Counter (clocked on CPU).
         s.apu.sequence_counter -= 1;
         if s.apu.sequence_counter == 0 {
-            // 4 cycle only
+            // 4 cycle.
             match s.apu.next_seq_phase {
                 0 => {
                     handle_frame_quarter(s);
@@ -82,15 +88,23 @@ pub fn emulate(s: &mut State, cycles: u64) {
                     handle_frame_quarter(s);
                 }
                 3 => {
+                    if s.apu.sequencer_mode == 0 {
+                        handle_frame_quarter(s);
+                        handle_frame_half(s);
+                        if s.apu.irq_enabled {
+                            s.cpu.pending_interrupt = super::cpu::InterruptKind::IRQ;
+                        }
+                    }
+                }
+                4 => {
                     handle_frame_quarter(s);
                     handle_frame_half(s);
                 }
                 _ => unreachable!(),
             }
-            // TODO: interrupt?
 
-            // TODO handle 5 cycle
-            s.apu.next_seq_phase = (s.apu.next_seq_phase + 1) % 4;
+            s.apu.next_seq_phase =
+                (s.apu.next_seq_phase + 1) % (4 + (s.apu.sequencer_mode as usize));
             s.apu.sequence_counter = 7457;
         }
 
@@ -128,9 +142,17 @@ fn handle_frame_half(s: &mut State) {
     s.apu.pulse2.clock_frame_half();
 }
 
-pub fn peek_register(s: &mut State, _register: u16) -> u8 {
+pub fn peek_register(s: &mut State, register: u16) -> u8 {
     catch_up(s);
-    0
+    if register == 0x4015 {
+        let val = (s.apu.pulse1.is_enabled() as u8)
+            | ((s.apu.pulse2.is_enabled() as u8) << 1)
+            | ((s.apu.irq_pending as u8) << 6);
+        s.apu.irq_pending = false;
+        val
+    } else {
+        0
+    }
 }
 
 pub fn poke_register(s: &mut State, register: u16, data: u8) {
@@ -150,8 +172,18 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
             // TODO: other channels
         }
         0x4017 => {
-            // TODO: frame counter + interrupt
-            // println!("--- {:b}", data);
+            s.apu.sequencer_mode = (data & 0b1000_0000) >> 7;
+            s.apu.irq_enabled = (data & 0b0100_0000) == 0;
+            s.apu.next_seq_phase = 0;
+            s.apu.sequence_counter = FRAME_INTERVAL;
+
+            if s.apu.sequence_counter == 1 {
+                handle_frame_quarter(s);
+                handle_frame_half(s);
+            }
+            if !s.apu.irq_enabled {
+                s.apu.irq_pending = false;
+            }
         }
         _ => {}
     }

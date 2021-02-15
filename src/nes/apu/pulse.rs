@@ -194,4 +194,8 @@ impl Pulse {
             self.length_counter = 0;
         }
     }
+
+    pub fn is_enabled(&self) -> bool {
+        self.length_counter > 0
+    }
 }
