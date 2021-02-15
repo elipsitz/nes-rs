@@ -1,9 +1,15 @@
 use super::nes::{State, AUDIO_SAMPLES_PER_FRAME};
 
 mod pulse;
+mod triangle;
 
 const FRAME_INTERVAL: u64 = 7457;
 const FULL_AUDIO_BUFFER_LEN: usize = AUDIO_SAMPLES_PER_FRAME * 40;
+
+const LENGTH_TABLE: [u8; 32] = [
+    10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
+    192, 24, 72, 26, 16, 28, 32, 30,
+];
 
 pub struct ApuState {
     /// Downsampled audio buffer (one frame's worth).
@@ -28,6 +34,7 @@ pub struct ApuState {
     // Units
     pulse1: pulse::Pulse,
     pulse2: pulse::Pulse,
+    triangle: triangle::Triangle,
 }
 
 impl ApuState {
@@ -49,6 +56,7 @@ impl ApuState {
 
             pulse1: pulse::Pulse::new_pulse1(),
             pulse2: pulse::Pulse::new_pulse2(),
+            triangle: triangle::Triangle::new(),
         }
     }
 }
@@ -115,6 +123,9 @@ pub fn emulate(s: &mut State, cycles: u64) {
             s.apu.sequence_counter = 7457;
         }
 
+        // Triangle gets clocked with the CPU.
+        s.apu.triangle.clock();
+
         // APU cycles are every other CPU cycle.
         s.apu.frame_cycle_counter += 1;
         s.apu.cpu_cycles += 1;
@@ -128,10 +139,15 @@ pub fn emulate(s: &mut State, cycles: u64) {
         // Compute subunit outputs.
         let pulse1_out = s.apu.pulse1.output() as f32;
         let pulse2_out = s.apu.pulse2.output() as f32;
+        let triangle_out = s.apu.triangle.output() as f32;
+        let noise_out = 0.0f32;
+        let dmc_out = 0.0f32;
 
         // Combine output. TODO make more efficient?
         let pulse_out = 95.88f32 / ((8128f32 / (pulse1_out + pulse2_out)) + 100f32);
-        let sample = pulse_out;
+        let tnd_denom = (triangle_out / 8227f32) + (noise_out / 12241f32) + (dmc_out / 22638f32);
+        let tnd_out = 159.79f32 / ((1f32 / (tnd_denom)) + 100f32);
+        let sample = pulse_out + tnd_out;
 
         // Write into the full audio buffer.
         s.apu.full_audio_buffer[s.apu.audio_index] = sample;
@@ -142,11 +158,13 @@ pub fn emulate(s: &mut State, cycles: u64) {
 fn handle_frame_quarter(s: &mut State) {
     s.apu.pulse1.clock_frame_quarter();
     s.apu.pulse2.clock_frame_quarter();
+    s.apu.triangle.clock_frame_quarter();
 }
 
 fn handle_frame_half(s: &mut State) {
     s.apu.pulse1.clock_frame_half();
     s.apu.pulse2.clock_frame_half();
+    s.apu.triangle.clock_frame_half();
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
@@ -154,6 +172,7 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
     if register == 0x4015 {
         let val = (s.apu.pulse1.is_enabled() as u8)
             | ((s.apu.pulse2.is_enabled() as u8) << 1)
+            | ((s.apu.triangle.is_enabled() as u8) << 2)
             | ((s.apu.irq_pending as u8) << 6);
         s.apu.irq_pending = false;
         val
@@ -166,15 +185,13 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
     catch_up(s);
 
     match register {
-        0x4000..=0x4003 => {
-            s.apu.pulse1.poke_register(register, data);
-        }
-        0x4004..=0x4007 => {
-            s.apu.pulse2.poke_register(register, data);
-        }
+        0x4000..=0x4003 => s.apu.pulse1.poke_register(register, data),
+        0x4004..=0x4007 => s.apu.pulse2.poke_register(register, data),
+        0x4008..=0x400B => s.apu.triangle.poke_register(register, data),
         0x4015 => {
             s.apu.pulse1.set_enable_flag((data & 0b0000_0001) != 0);
             s.apu.pulse2.set_enable_flag((data & 0b0000_0010) != 0);
+            s.apu.triangle.set_enable_flag((data & 0b0000_0100) != 0);
 
             // TODO: other channels
         }

@@ -1,8 +1,3 @@
-const LENGTH_TABLE: [u8; 32] = [
-    10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
-    192, 24, 72, 26, 16, 28, 32, 30,
-];
-
 const DUTY_TABLE: [[bool; 8]; 4] = [
     [false, false, false, false, false, false, false, true],
     [false, false, false, false, false, false, true, true],
@@ -177,7 +172,7 @@ impl Pulse {
                 self.freq_timer |= ((data as u16) & 0b111) << 8;
 
                 if self.enabled {
-                    self.length_counter = LENGTH_TABLE[(data >> 3) as usize];
+                    self.length_counter = super::LENGTH_TABLE[(data >> 3) as usize];
                 }
 
                 self.freq_counter = self.freq_timer;
