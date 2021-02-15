@@ -1,3 +1,5 @@
+use apu::start_frame;
+
 use super::apu;
 use super::cartridge::Cartridge;
 use super::controller;
@@ -46,11 +48,12 @@ impl Nes {
 
     pub fn emulate_frame(&mut self) {
         let start_frame = self.state.ppu.frames;
+        apu::start_frame(&mut self.state);
         while self.state.ppu.frames == start_frame {
             let _cycles = cpu::emulate(&mut self.state, 1);
             ppu::catch_up(&mut self.state);
         }
-        apu::catch_up(&mut self.state);
+        apu::complete_frame(&mut self.state);
     }
 
     pub fn set_controller1_state(&mut self, state: controller::ControllerState) {
