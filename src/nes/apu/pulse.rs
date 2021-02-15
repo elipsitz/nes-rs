@@ -30,10 +30,21 @@ pub struct Pulse {
     sweep_reload: bool,
     sweep_enabled: bool,
     sweep_counter: u8,
+
+    // 1 for Pulse 1, 0 for Pulse 2.
+    sweep_negate_constant: u16,
 }
 
 impl Pulse {
-    pub fn new() -> Pulse {
+    pub fn new_pulse1() -> Pulse {
+        Pulse::new(1)
+    }
+
+    pub fn new_pulse2() -> Pulse {
+        Pulse::new(0)
+    }
+
+    fn new(sweep_negate_constant: u16) -> Pulse {
         Pulse {
             enabled: false,
             duty_table: &DUTY_TABLE[0],
@@ -54,6 +65,7 @@ impl Pulse {
             sweep_reload: false,
             sweep_enabled: false,
             sweep_counter: 0,
+            sweep_negate_constant,
         }
     }
 
@@ -100,8 +112,7 @@ impl Pulse {
             if self.sweep_enabled && !self.is_sweep_silencing() {
                 if self.sweep_negate {
                     self.freq_timer -= self.freq_timer >> self.sweep_shift;
-                    self.freq_timer -= 1;
-                    // note: pulse2 has no additional -1
+                    self.freq_timer -= self.sweep_negate_constant;
                 } else {
                     self.freq_timer += self.freq_timer >> self.sweep_shift;
                 }
@@ -142,26 +153,26 @@ impl Pulse {
     }
 
     pub fn poke_register(&mut self, register: u16, data: u8) {
-        match register {
-            0x4000 => {
+        match register & 0b11 {
+            0 => {
                 self.duty_table = &DUTY_TABLE[((data & 0b1100_0000) >> 6) as usize];
                 self.volume = data & 0b0000_1111;
                 self.length_enabled = (data & 0b0010_0000) == 0;
                 self.decay_enabled = (data & 0b0001_0000) == 0;
                 self.decay_loop = (data & 0b0010_0000) != 0;
             }
-            0x4001 => {
+            1 => {
                 self.sweep_timer = (data & 0b0111_0000) >> 4;
                 self.sweep_negate = (data & 0b0000_1000) != 0;
                 self.sweep_shift = data & 0b0000_0111;
                 self.sweep_reload = true;
                 self.sweep_enabled = ((data & 0b1000_0000) != 0) && (self.sweep_shift != 0);
             }
-            0x4002 => {
+            2 => {
                 self.freq_timer &= 0xFF00;
                 self.freq_timer |= data as u16;
             }
-            0x4003 => {
+            3 => {
                 self.freq_timer &= 0x00FF;
                 self.freq_timer |= ((data as u16) & 0b111) << 8;
 

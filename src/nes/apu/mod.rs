@@ -18,7 +18,9 @@ pub struct ApuState {
     sequence_counter: u64,
     next_seq_phase: usize,
 
+    // Units
     pulse1: pulse::Pulse,
+    pulse2: pulse::Pulse,
 }
 
 impl ApuState {
@@ -33,7 +35,8 @@ impl ApuState {
             sequence_counter: FRAME_INTERVAL,
             next_seq_phase: 0,
 
-            pulse1: pulse::Pulse::new(),
+            pulse1: pulse::Pulse::new_pulse1(),
+            pulse2: pulse::Pulse::new_pulse2(),
         }
     }
 }
@@ -99,12 +102,17 @@ pub fn emulate(s: &mut State, cycles: u64) {
         }
 
         s.apu.pulse1.clock();
+        s.apu.pulse2.clock();
 
-        // Compute output.
-        let pulse1_out = s.apu.pulse1.output();
+        // Compute subunit outputs.
+        let pulse1_out = s.apu.pulse1.output() as f32;
+        let pulse2_out = s.apu.pulse2.output() as f32;
+
+        // Combine output. TODO make more efficient?
+        let pulse_out = 95.88f32 / ((8128f32 / (pulse1_out + pulse2_out)) + 100f32);
+        let sample = pulse_out;
 
         // ~38 per thing
-        let sample = (pulse1_out as f32) / (30.0f32);
         let index = (s.apu.frame_cycle_counter / 38) as usize;
         s.apu.audio_buffer[index] += sample;
     }
@@ -112,10 +120,12 @@ pub fn emulate(s: &mut State, cycles: u64) {
 
 fn handle_frame_quarter(s: &mut State) {
     s.apu.pulse1.clock_frame_quarter();
+    s.apu.pulse2.clock_frame_quarter();
 }
 
 fn handle_frame_half(s: &mut State) {
     s.apu.pulse1.clock_frame_half();
+    s.apu.pulse2.clock_frame_half();
 }
 
 pub fn peek_register(s: &mut State, _register: u16) -> u8 {
@@ -130,8 +140,12 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         0x4000..=0x4003 => {
             s.apu.pulse1.poke_register(register, data);
         }
+        0x4004..=0x4007 => {
+            s.apu.pulse2.poke_register(register, data);
+        }
         0x4015 => {
             s.apu.pulse1.set_enable_flag((data & 0b0000_0001) != 0);
+            s.apu.pulse2.set_enable_flag((data & 0b0000_0010) != 0);
 
             // TODO: other channels
         }
