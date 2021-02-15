@@ -37,7 +37,7 @@ impl Noise {
         }
     }
 
-    /// Clocked every CPU cycle.
+    /// Clocked every APU cycle.
     pub fn clock(&mut self) {
         if self.freq_counter > 0 {
             self.freq_counter -= 1;

@@ -1,5 +1,6 @@
 use super::nes::{State, AUDIO_SAMPLES_PER_FRAME};
 
+mod dmc;
 mod noise;
 mod pulse;
 mod triangle;
@@ -37,6 +38,7 @@ pub struct ApuState {
     pulse2: pulse::Pulse,
     triangle: triangle::Triangle,
     noise: noise::Noise,
+    dmc: dmc::Dmc,
 }
 
 impl ApuState {
@@ -60,6 +62,7 @@ impl ApuState {
             pulse2: pulse::Pulse::new_pulse2(),
             triangle: triangle::Triangle::new(),
             noise: noise::Noise::new(),
+            dmc: dmc::Dmc::new(),
         }
     }
 }
@@ -139,13 +142,14 @@ pub fn emulate(s: &mut State, cycles: u64) {
         s.apu.pulse1.clock();
         s.apu.pulse2.clock();
         s.apu.noise.clock();
+        s.apu.dmc.clock();
 
         // Compute subunit outputs.
         let pulse1_out = s.apu.pulse1.output() as f32;
         let pulse2_out = s.apu.pulse2.output() as f32;
         let triangle_out = s.apu.triangle.output() as f32;
         let noise_out = s.apu.noise.output() as f32;
-        let dmc_out = 0.0f32;
+        let dmc_out = s.apu.dmc.output() as f32;
 
         // Combine output. TODO make more efficient?
         let pulse_out = 95.88f32 / ((8128f32 / (pulse1_out + pulse2_out)) + 100f32);
@@ -164,6 +168,7 @@ fn handle_frame_quarter(s: &mut State) {
     s.apu.pulse2.clock_frame_quarter();
     s.apu.triangle.clock_frame_quarter();
     s.apu.noise.clock_frame_quarter();
+    s.apu.dmc.clock_frame_quarter();
 }
 
 fn handle_frame_half(s: &mut State) {
@@ -171,6 +176,7 @@ fn handle_frame_half(s: &mut State) {
     s.apu.pulse2.clock_frame_half();
     s.apu.triangle.clock_frame_half();
     s.apu.noise.clock_frame_half();
+    s.apu.dmc.clock_frame_half();
 }
 
 pub fn peek_register(s: &mut State, register: u16) -> u8 {
@@ -180,6 +186,7 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
             | ((s.apu.pulse2.is_enabled() as u8) << 1)
             | ((s.apu.triangle.is_enabled() as u8) << 2)
             | ((s.apu.noise.is_enabled() as u8) << 3)
+            | ((s.apu.dmc.is_enabled() as u8) << 4)
             | ((s.apu.irq_pending as u8) << 6);
         s.apu.irq_pending = false;
         val
@@ -196,13 +203,13 @@ pub fn poke_register(s: &mut State, register: u16, data: u8) {
         0x4004..=0x4007 => s.apu.pulse2.poke_register(register, data),
         0x4008..=0x400B => s.apu.triangle.poke_register(register, data),
         0x400C..=0x400F => s.apu.noise.poke_register(register, data),
+        0x4010..=0x4013 => s.apu.dmc.poke_register(register, data),
         0x4015 => {
             s.apu.pulse1.set_enable_flag((data & 0b0000_0001) != 0);
             s.apu.pulse2.set_enable_flag((data & 0b0000_0010) != 0);
             s.apu.triangle.set_enable_flag((data & 0b0000_0100) != 0);
             s.apu.noise.set_enable_flag((data & 0b0000_1000) != 0);
-
-            // TODO: other channels
+            s.apu.dmc.set_enable_flag((data & 0b0001_0000) != 0);
         }
         0x4017 => {
             s.apu.sequencer_mode = (data & 0b1000_0000) >> 7;
