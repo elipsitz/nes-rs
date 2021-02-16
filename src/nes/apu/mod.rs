@@ -142,7 +142,7 @@ pub fn emulate(s: &mut State, cycles: u64) {
         s.apu.pulse1.clock();
         s.apu.pulse2.clock();
         s.apu.noise.clock();
-        s.apu.dmc.clock();
+        dmc::Dmc::clock(s);
 
         // Compute subunit outputs.
         let pulse1_out = s.apu.pulse1.output() as f32;
@@ -187,7 +187,8 @@ pub fn peek_register(s: &mut State, register: u16) -> u8 {
             | ((s.apu.triangle.is_enabled() as u8) << 2)
             | ((s.apu.noise.is_enabled() as u8) << 3)
             | ((s.apu.dmc.is_enabled() as u8) << 4)
-            | ((s.apu.irq_pending as u8) << 6);
+            | ((s.apu.irq_pending as u8) << 6)
+            | ((s.apu.dmc.is_irq_pending() as u8) << 7);
         s.apu.irq_pending = false;
         val
     } else {
