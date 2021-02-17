@@ -9,12 +9,12 @@ pub struct RomHeader {
 }
 
 pub struct Cartridge {
-    pub header: RomHeader,
-    pub prg_rom: Vec<u8>,
-    pub chr_rom: Vec<u8>,
-    pub mapper_id: u8,
-    pub mirror_mode: u8,
-    pub _extra_data: Vec<u8>,
+    pub(crate) _header: RomHeader,
+    pub(crate) prg_rom: Vec<u8>,
+    pub(crate) chr_rom: Vec<u8>,
+    pub(crate) mapper_id: u8,
+    pub(crate) mirror_mode: u8,
+    pub(crate) _extra_data: Vec<u8>,
 }
 
 impl Cartridge {
@@ -50,7 +50,7 @@ impl Cartridge {
             chr_rom,
             mapper_id: (header.flags7 & 0xF0) | (header.flags6 >> 4),
             mirror_mode: (header.flags6 & 0x1) | (header.flags6 & 0x8 >> 2),
-            header,
+            _header: header,
             _extra_data: extra_data.to_vec(),
         }
     }

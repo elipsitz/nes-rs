@@ -20,7 +20,7 @@ pub const AUDIO_SAMPLE_RATE: usize = 48000;
 pub const AUDIO_SAMPLES_PER_FRAME: usize = AUDIO_SAMPLE_RATE / 60;
 
 pub struct Nes {
-    pub state: State,
+    state: State,
 }
 
 pub struct State {
