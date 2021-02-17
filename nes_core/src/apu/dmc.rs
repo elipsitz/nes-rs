@@ -1,4 +1,4 @@
-use crate::nes::{cpu::InterruptKind, nes::State};
+use crate::{cpu::InterruptKind, nes::State};
 
 /// In units of APU clock.
 const RATE_TABLE: [u16; 16] = [

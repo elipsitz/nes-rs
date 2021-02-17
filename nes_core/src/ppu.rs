@@ -1,6 +1,5 @@
 use super::cpu;
-use super::nes::{State, FRAME_SIZE};
-use crate::nes::nes::{FRAME_DEPTH, FRAME_WIDTH};
+use super::nes::{State, FRAME_DEPTH, FRAME_SIZE, FRAME_WIDTH};
 
 const COLORS: [u32; 64] = [
     0x545454, 0x001e74, 0x081090, 0x300088, 0x440064, 0x5c0030, 0x540400, 0x3c1800, 0x202a00,

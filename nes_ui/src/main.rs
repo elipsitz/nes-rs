@@ -7,13 +7,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::nes::controller::ControllerState;
+use nes_core::controller::ControllerState;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::surface::Surface;
-
-mod nes;
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
@@ -59,7 +57,7 @@ fn get_controller_state(event_pump: &sdl2::EventPump) -> (ControllerState, Contr
 }
 
 fn run_emulator(
-    mut nes: nes::nes::Nes,
+    mut nes: nes_core::nes::Nes,
     mut audio_out: Option<hound::WavWriter<BufWriter<File>>>,
 ) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -102,7 +100,7 @@ fn run_emulator(
     debug_texture.set_blend_mode(BlendMode::Blend);
 
     let audio_spec_desired = sdl2::audio::AudioSpecDesired {
-        freq: Some(nes::nes::AUDIO_SAMPLE_RATE as i32),
+        freq: Some(nes_core::nes::AUDIO_SAMPLE_RATE as i32),
         channels: Some(1),
         samples: None,
     };
@@ -222,20 +220,20 @@ fn main() {
     let rom_path: &str = args.value_of("rom").unwrap();
     println!("[main] Loading rom at path: {}", rom_path);
 
-    let mut debug = nes::debug::Debug::default();
+    let mut debug = nes_core::debug::Debug::default();
     debug.cpu_log = args.is_present("cpu-log");
 
     let audio_out = args.value_of("audio-output").map(|filename| {
         let spec = hound::WavSpec {
             channels: 1,
-            sample_rate: nes::nes::AUDIO_SAMPLE_RATE as u32,
+            sample_rate: nes_core::nes::AUDIO_SAMPLE_RATE as u32,
             bits_per_sample: 32,
             sample_format: hound::SampleFormat::Float,
         };
         hound::WavWriter::create(filename, spec).unwrap()
     });
 
-    let cart = nes::cartridge::Cartridge::load(rom_path);
-    let nes = nes::nes::Nes::new(debug, cart);
+    let cart = nes_core::cartridge::Cartridge::load(rom_path);
+    let nes = nes_core::nes::Nes::new(debug, cart);
     run_emulator(nes, audio_out).unwrap();
 }

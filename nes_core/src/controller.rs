@@ -1,4 +1,4 @@
-use crate::nes::nes::State;
+use crate::nes::State;
 
 #[derive(Default, Debug)]
 pub struct ControllerState {
