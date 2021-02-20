@@ -23,4 +23,8 @@ impl Emulator {
     pub fn emulate_frame(&mut self) {
         self.nes.emulate_frame();
     }
+
+    pub fn get_frame_buffer(&self, out: &mut [u8]) {
+        out.copy_from_slice(self.nes.get_frame_buffer());
+    }
 }

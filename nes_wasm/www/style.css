@@ -1,0 +1,9 @@
+#canvas {
+	width: 512px;
+	height: 480px;
+	image-rendering: pixelated;
+	image-rendering: crisp-edges;
+
+	border: 4px solid black;
+	background-color: lightsalmon;
+}
