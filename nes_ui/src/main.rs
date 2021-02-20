@@ -99,6 +99,8 @@ fn run_emulator(
     let mut paused = false;
     let mut single_step = false;
 
+    let mut save_state: Option<Vec<u8>> = None;
+
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
         // Check events.
@@ -123,6 +125,21 @@ fn run_emulator(
                     }
                     Keycode::Backquote => {
                         nes.debug_toggle_overlay();
+                    }
+                    Keycode::O => {
+                        // Save
+                        save_state = Some(nes.get_state());
+                        println!("Saved state.");
+                    }
+                    Keycode::P => {
+                        // Load
+                        match save_state {
+                            Some(ref s) => match nes.set_state(s) {
+                                Ok(_) => println!("Loaded state."),
+                                Err(_) => println!("Error loading state."),
+                            },
+                            None => println!("Nothing to load."),
+                        }
                     }
                     _ => {}
                 },

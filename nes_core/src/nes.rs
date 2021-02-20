@@ -86,6 +86,14 @@ impl Nes {
     pub fn debug_render_enabled(&self) -> bool {
         self.state.debug.overlay != 0
     }
+
+    pub fn get_state(&self) -> Vec<u8> {
+        vec![]
+    }
+
+    pub fn set_state(&mut self, _state: &[u8]) -> Result<(), ()> {
+        Err(())
+    }
 }
 
 impl State {

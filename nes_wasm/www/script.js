@@ -104,7 +104,8 @@ async function onLoad() {
     canvas.addEventListener("keyup", (e) => handleKey(e.code, false), true);
 
     // Initialize audio.
-    audio_ctx = new window.AudioContext();
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    audio_ctx = new AudioContext({sampleRate: NES_SAMPLE_RATE});
     audio_buffer = audio_ctx.createBuffer(1, NES_SAMPLE_RATE / 60, NES_SAMPLE_RATE);
 
     // Initialize controls;
