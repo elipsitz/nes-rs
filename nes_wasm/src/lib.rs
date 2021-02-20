@@ -6,6 +6,6 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
+pub fn load_rom(data: &[u8]) {
+    alert(&format!("Length: {}", data.len()));
 }
