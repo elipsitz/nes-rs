@@ -79,9 +79,6 @@ checksum = "3baa92041a6fec78c687fa0cc2b3fae8884f743d672cf551bed1d6dac6988d0f"
 [[package]]
 name = "nes_core"
 version = "0.1.0"
-dependencies = [
- "sdl2",
-]
 
 [[package]]
 name = "nes_ui"

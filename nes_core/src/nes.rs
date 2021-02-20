@@ -54,6 +54,7 @@ impl Nes {
             ppu::catch_up(&mut self.state);
         }
         apu::complete_frame(&mut self.state);
+        debug::update_overlay(&mut self.state);
     }
 
     pub fn set_controller1_state(&mut self, state: controller::ControllerState) {
@@ -78,11 +79,8 @@ impl Nes {
         self.state.debug.toggle_overlay();
     }
 
-    pub fn debug_render_overlay(
-        &mut self,
-        canvas: &mut sdl2::render::SurfaceCanvas,
-    ) -> Result<(), String> {
-        debug::render_overlay(&mut self.state, canvas)
+    pub fn debug_get_overlay_buffer(&self) -> &[u8; FRAME_SIZE] {
+        &self.state.debug.overlay_buffer
     }
 
     pub fn debug_render_enabled(&self) -> bool {

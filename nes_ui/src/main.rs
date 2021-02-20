@@ -11,7 +11,6 @@ use nes_core::ControllerState;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
-use sdl2::surface::Surface;
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 240;
@@ -82,21 +81,9 @@ fn run_emulator(
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
 
-    let debug_surface = Surface::new(
-        WIDTH * SCALE,
-        HEIGHT * SCALE,
-        sdl2::pixels::PixelFormatEnum::ABGR8888,
-    )
-    .map_err(|e| e.to_string())?;
-    let mut debug_canvas = debug_surface.into_canvas()?;
     let mut debug_texture = texture_creator
-        .create_texture_streaming(
-            sdl2::pixels::PixelFormatEnum::ABGR8888,
-            WIDTH * SCALE,
-            HEIGHT * SCALE,
-        )
+        .create_texture_streaming(sdl2::pixels::PixelFormatEnum::ABGR8888, WIDTH, HEIGHT)
         .map_err(|e| e.to_string())?;
-    debug_canvas.set_scale(SCALE as f32, SCALE as f32)?;
     debug_texture.set_blend_mode(BlendMode::Blend);
 
     let audio_spec_desired = sdl2::audio::AudioSpecDesired {
@@ -165,13 +152,9 @@ fn run_emulator(
             }
 
             if nes.debug_render_enabled() {
-                nes.debug_render_overlay(&mut debug_canvas)?;
+                let buf = nes.debug_get_overlay_buffer();
                 debug_texture
-                    .update(
-                        None,
-                        debug_canvas.surface().without_lock().unwrap(),
-                        (WIDTH * SCALE * 4) as usize,
-                    )
+                    .update(None, buf, (WIDTH * 4) as usize)
                     .map_err(|e| e.to_string())?;
                 canvas.copy(&debug_texture, None, None)?;
             }
