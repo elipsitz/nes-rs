@@ -3,4 +3,5 @@
 members = [
     "nes_core",
     "nes_ui",
+    "nes_wasm",
 ]
