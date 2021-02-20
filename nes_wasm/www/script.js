@@ -2,11 +2,14 @@ import init, * as nes from '../pkg/nes_wasm.js';
 
 const NES_WIDTH = 256;
 const NES_HEIGHT = 240;
+const NES_SAMPLE_RATE = 48000;
 
 var emulator = null;
 var canvas = null;
 var canvas_ctx = null;
 var canvas_data = null;
+var audio_ctx = null;
+var audio_buffer = null;
 var paused = true;
 var key_a = false;
 var key_b = false;
@@ -48,6 +51,12 @@ function emulatorStep() {
     emulator.emulate_frame();
     emulator.get_frame_buffer(canvas_data.data);
     canvas_ctx.putImageData(canvas_data, 0, 0);
+
+    emulator.get_audio_buffer(audio_buffer.getChannelData(0));
+    var source = audio_ctx.createBufferSource();
+    source.buffer = audio_buffer;
+    source.connect(audio_ctx.destination);
+    source.start();
 
     if (!paused) {
         window.requestAnimationFrame(emulatorStep);
@@ -93,6 +102,10 @@ async function onLoad() {
     canvas_data = canvas_ctx.createImageData(NES_WIDTH, NES_HEIGHT);
     canvas.addEventListener("keydown", (e) => handleKey(e.code, true), true);
     canvas.addEventListener("keyup", (e) => handleKey(e.code, false), true);
+
+    // Initialize audio.
+    audio_ctx = new window.AudioContext();
+    audio_buffer = audio_ctx.createBuffer(1, NES_SAMPLE_RATE / 60, NES_SAMPLE_RATE);
 
     // Initialize controls;
     let file_selector = document.getElementById("rom_input");

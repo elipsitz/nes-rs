@@ -28,6 +28,10 @@ impl Emulator {
         out.copy_from_slice(self.nes.get_frame_buffer());
     }
 
+    pub fn get_audio_buffer(&self, out: &mut [f32]) {
+        out.copy_from_slice(self.nes.get_audio_buffer());
+    }
+
     pub fn set_controller1_state(
         &mut self,
         a: bool,
