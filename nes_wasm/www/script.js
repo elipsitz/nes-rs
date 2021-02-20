@@ -7,6 +7,7 @@ var emulator = null;
 var canvas = null;
 var canvas_ctx = null;
 var canvas_data = null;
+var paused = true;
 
 function openRom(event) {
     var input = event.target;
@@ -17,7 +18,10 @@ function openRom(event) {
         var data = new Uint8Array(arrayBuffer);
         emulator = new nes.Emulator(data);
 
-        window.requestAnimationFrame(emulatorStep);
+        if (paused) {
+            paused = false;
+            emulatorStep();
+        }
     };
     reader.readAsArrayBuffer(input.files[0]);
 }
@@ -27,7 +31,9 @@ function emulatorStep() {
     emulator.get_frame_buffer(canvas_data.data);
     canvas_ctx.putImageData(canvas_data, 0, 0);
 
-    window.requestAnimationFrame(emulatorStep);
+    if (!paused) {
+        window.requestAnimationFrame(emulatorStep);
+    }
 }
 
 async function onLoad() {
@@ -39,9 +45,22 @@ async function onLoad() {
     canvas_ctx = canvas.getContext("2d");
     canvas_data = canvas_ctx.createImageData(NES_WIDTH, NES_HEIGHT);
 
-    // Initialize ROM selector.
+    // Initialize controls;
     let file_selector = document.getElementById("rom_input");
     file_selector.addEventListener("change", openRom);
+    document.getElementById("control_pause").addEventListener("click", () => {
+        paused = true;
+    });
+    document.getElementById("control_play").addEventListener("click", () => {
+        if (paused) {
+            paused = false;
+            emulatorStep();
+        }
+    });
+    document.getElementById("control_step").addEventListener("click", () => {
+        paused = true;
+        emulatorStep();
+    });
 }
 
 window.addEventListener("load", onLoad);
