@@ -6,6 +6,21 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub fn load_rom(data: &[u8]) {
-    alert(&format!("Length: {}", data.len()));
+pub struct Emulator {
+    nes: nes_core::Nes,
+}
+
+#[wasm_bindgen]
+impl Emulator {
+    #[wasm_bindgen(constructor)]
+    pub fn new(rom: &[u8]) -> Emulator {
+        let cartridge = nes_core::Cartridge::load(rom);
+        let debug = nes_core::Debug::default();
+        let nes = nes_core::Nes::new(debug, cartridge);
+        Emulator { nes }
+    }
+
+    pub fn emulate_frame(&mut self) {
+        self.nes.emulate_frame();
+    }
 }
