@@ -1,5 +1,3 @@
-use std::fs;
-
 pub struct RomHeader {
     prg_rom_size: u8, // in 16KB units
     chr_rom_size: u8, // in  8KB units
@@ -18,8 +16,7 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn load(path: &str) -> Cartridge {
-        let data = fs::read(path).expect("Error reading rom file");
+    pub fn load(data: &[u8]) -> Cartridge {
         assert!(data.len() >= 16);
         assert!(&data[0..4] == [0x4E, 0x45, 0x53, 0x1A], "not an iNES file");
 

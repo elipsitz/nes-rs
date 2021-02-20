@@ -233,7 +233,8 @@ fn main() {
         hound::WavWriter::create(filename, spec).unwrap()
     });
 
-    let cart = nes_core::Cartridge::load(rom_path);
+    let cartridge_data = std::fs::read(rom_path).expect("Error reading rom file");
+    let cart = nes_core::Cartridge::load(&cartridge_data);
     let nes = nes_core::Nes::new(debug, cart);
     run_emulator(nes, audio_out).unwrap();
 }
