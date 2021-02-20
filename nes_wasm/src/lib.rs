@@ -27,4 +27,27 @@ impl Emulator {
     pub fn get_frame_buffer(&self, out: &mut [u8]) {
         out.copy_from_slice(self.nes.get_frame_buffer());
     }
+
+    pub fn set_controller1_state(
+        &mut self,
+        a: bool,
+        b: bool,
+        select: bool,
+        start: bool,
+        left: bool,
+        right: bool,
+        up: bool,
+        down: bool,
+    ) {
+        let mut state = nes_core::ControllerState::default();
+        state.a = a;
+        state.b = b;
+        state.select = select;
+        state.start = start;
+        state.left = left;
+        state.right = right;
+        state.up = up;
+        state.down = down;
+        self.nes.set_controller1_state(state);
+    }
 }
