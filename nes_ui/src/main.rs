@@ -4,6 +4,7 @@ extern crate sdl2;
 use std::{
     fs::File,
     io::BufWriter,
+    path::Path,
     time::{Duration, Instant},
 };
 
@@ -58,6 +59,7 @@ fn get_controller_state(event_pump: &sdl2::EventPump) -> (ControllerState, Contr
 fn run_emulator(
     nes: &mut nes_core::Nes,
     mut audio_out: Option<hound::WavWriter<BufWriter<File>>>,
+    save_state_path: &str,
 ) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -99,8 +101,6 @@ fn run_emulator(
     let mut paused = false;
     let mut single_step = false;
 
-    let mut save_state: Option<Vec<u8>> = None;
-
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
         // Check events.
@@ -128,17 +128,18 @@ fn run_emulator(
                     }
                     Keycode::O => {
                         // Save
-                        save_state = Some(nes.get_state());
-                        println!("Saved state.");
+                        let state = nes.get_state();
+                        std::fs::write(save_state_path, &state).unwrap();
+                        println!("Saved state to {}", save_state_path);
                     }
                     Keycode::P => {
                         // Load
-                        match save_state {
-                            Some(ref s) => match nes.set_state(s) {
-                                Ok(_) => println!("Loaded state."),
-                                Err(_) => println!("Error loading state."),
-                            },
-                            None => println!("Nothing to load."),
+                        let result = std::fs::read(save_state_path)
+                            .map_err(|_| ())
+                            .and_then(|data| nes.set_state(&data));
+                        match result {
+                            Ok(_) => println!("Loaded state from {}", save_state_path),
+                            Err(_) => println!("Nothing to load."),
                         }
                     }
                     _ => {}
@@ -233,8 +234,11 @@ fn main() {
         hound::WavWriter::create(filename, spec).unwrap()
     });
 
+    let rom_filename = Path::new(rom_path).file_name().unwrap().to_str().unwrap();
+    let save_state_path = format!("state_{}.nes_state", rom_filename);
+
     let cartridge_data = std::fs::read(rom_path).expect("Error reading rom file");
     let cart = nes_core::Cartridge::load(&cartridge_data);
     let mut nes = Box::new(nes_core::Nes::new(debug, cart));
-    run_emulator(nes.as_mut(), audio_out).unwrap();
+    run_emulator(nes.as_mut(), audio_out, &save_state_path).unwrap();
 }
