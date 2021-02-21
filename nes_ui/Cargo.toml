@@ -10,4 +10,5 @@ edition = "2018"
 sdl2 = "0.34"
 clap = "2.33.1"
 hound = "3.4.0"
+flate2 = "1.0"
 nes_core = { path = "../nes_core" }

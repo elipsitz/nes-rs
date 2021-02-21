@@ -3,11 +3,12 @@ extern crate sdl2;
 
 use std::{
     fs::File,
-    io::BufWriter,
+    io::{BufWriter, Read, Write},
     path::Path,
     time::{Duration, Instant},
 };
 
+use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use nes_core::ControllerState;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -130,14 +131,19 @@ fn run_emulator(
                     Keycode::S if keymod == sdl2::keyboard::Mod::LGUIMOD => {
                         // Save
                         let state = nes.get_state();
-                        std::fs::write(save_state_path, &state).unwrap();
+                        let f = std::fs::File::create(save_state_path).unwrap();
+                        let mut writer = ZlibEncoder::new(f, Compression::default());
+                        writer.write_all(&state).unwrap();
                         println!("Saved state to {}", save_state_path);
                     }
                     Keycode::L if keymod == sdl2::keyboard::Mod::LGUIMOD => {
                         // Load
-                        let result = std::fs::read(save_state_path)
+                        let mut output = vec![];
+                        let result = std::fs::File::open(save_state_path)
                             .map_err(|_| ())
-                            .and_then(|data| nes.set_state(&data));
+                            .map(|f| ZlibDecoder::new(f))
+                            .and_then(|mut d| d.read_to_end(&mut output).map_err(|_| ()))
+                            .and_then(|_| nes.set_state(&mut output));
                         match result {
                             Ok(_) => println!("Loaded state from {}", save_state_path),
                             Err(_) => println!("Nothing to load."),
