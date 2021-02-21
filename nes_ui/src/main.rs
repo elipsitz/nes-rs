@@ -111,6 +111,7 @@ fn run_emulator(
                 }
                 sdl2::event::Event::KeyDown {
                     keycode: Some(code),
+                    keymod,
                     ..
                 } => match code {
                     Keycode::Space => {
@@ -126,13 +127,13 @@ fn run_emulator(
                     Keycode::Backquote => {
                         nes.debug_toggle_overlay();
                     }
-                    Keycode::O => {
+                    Keycode::S if keymod == sdl2::keyboard::Mod::LGUIMOD => {
                         // Save
                         let state = nes.get_state();
                         std::fs::write(save_state_path, &state).unwrap();
                         println!("Saved state to {}", save_state_path);
                     }
-                    Keycode::P => {
+                    Keycode::L if keymod == sdl2::keyboard::Mod::LGUIMOD => {
                         // Load
                         let result = std::fs::read(save_state_path)
                             .map_err(|_| ())
