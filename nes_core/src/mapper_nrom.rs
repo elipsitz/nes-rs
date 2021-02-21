@@ -1,13 +1,22 @@
 use super::cartridge::Cartridge;
 use super::mapper::{translate_vram, Mapper, MirrorMode};
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
 
+big_array! { BigArray; 2048 }
+
+#[derive(Serialize, Deserialize)]
 pub struct MapperNrom {
+    #[serde(skip)]
     cart: Cartridge,
+    #[serde(with = "BigArray")]
     vram: [u8; 2048],
     mirror_mode: MirrorMode,
 }
 
 impl MapperNrom {
+    pub const ID: u8 = 0;
+
     pub fn new(cart: Cartridge) -> MapperNrom {
         let mirror_mode = match cart.mirror_mode {
             0 => MirrorMode::MirrorHorizontal,
@@ -46,5 +55,13 @@ impl Mapper for MapperNrom {
             0x2000..=0x3EFF => self.vram[translate_vram(self.mirror_mode, addr)] = val,
             _ => {}
         };
+    }
+
+    fn get_id(&self) -> u8 {
+        Self::ID
+    }
+
+    fn update_cartridge(&mut self, cartridge: Cartridge) {
+        self.cart = cartridge;
     }
 }

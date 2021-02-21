@@ -56,7 +56,7 @@ fn get_controller_state(event_pump: &sdl2::EventPump) -> (ControllerState, Contr
 }
 
 fn run_emulator(
-    mut nes: nes_core::Nes,
+    nes: &mut nes_core::Nes,
     mut audio_out: Option<hound::WavWriter<BufWriter<File>>>,
 ) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -235,6 +235,6 @@ fn main() {
 
     let cartridge_data = std::fs::read(rom_path).expect("Error reading rom file");
     let cart = nes_core::Cartridge::load(&cartridge_data);
-    let nes = nes_core::Nes::new(debug, cart);
-    run_emulator(nes, audio_out).unwrap();
+    let mut nes = Box::new(nes_core::Nes::new(debug, cart));
+    run_emulator(nes.as_mut(), audio_out).unwrap();
 }

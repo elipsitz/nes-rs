@@ -1,7 +1,8 @@
 use super::nes::State;
+use serde::{Deserialize, Serialize};
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum InterruptKind {
     None,
     Reset,
@@ -9,6 +10,7 @@ pub enum InterruptKind {
     NMI,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct CpuState {
     pub a: u8,
     pub x: u8,

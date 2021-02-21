@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 const DUTY_TABLE: [[bool; 8]; 4] = [
     [false, false, false, false, false, false, false, true],
     [false, false, false, false, false, false, true, true],
@@ -5,9 +7,10 @@ const DUTY_TABLE: [[bool; 8]; 4] = [
     [true, true, true, true, true, true, false, false],
 ];
 
+#[derive(Serialize, Deserialize)]
 pub struct Pulse {
     enabled: bool,
-    duty_table: &'static [bool; 8],
+    duty_table: usize,
     duty_counter: usize,
     volume: u8,
     freq_counter: u16,
@@ -42,7 +45,7 @@ impl Pulse {
     fn new(sweep_negate_constant: u16) -> Pulse {
         Pulse {
             enabled: false,
-            duty_table: &DUTY_TABLE[0],
+            duty_table: 0,
             duty_counter: 0,
             volume: 0,
             freq_counter: 0,
@@ -121,7 +124,7 @@ impl Pulse {
     }
 
     pub fn output(&self) -> u8 {
-        if self.duty_table[self.duty_counter]
+        if DUTY_TABLE[self.duty_table][self.duty_counter]
             && self.length_counter != 0
             && !self.is_sweep_silencing()
         {
@@ -150,7 +153,7 @@ impl Pulse {
     pub fn poke_register(&mut self, register: u16, data: u8) {
         match register & 0b11 {
             0 => {
-                self.duty_table = &DUTY_TABLE[((data & 0b1100_0000) >> 6) as usize];
+                self.duty_table = ((data & 0b1100_0000) >> 6) as usize;
                 self.volume = data & 0b0000_1111;
                 self.length_enabled = (data & 0b0010_0000) == 0;
                 self.decay_enabled = (data & 0b0001_0000) == 0;

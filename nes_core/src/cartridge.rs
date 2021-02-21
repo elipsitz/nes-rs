@@ -1,3 +1,4 @@
+#[derive(Clone, Default)]
 pub struct RomHeader {
     prg_rom_size: u8, // in 16KB units
     chr_rom_size: u8, // in  8KB units
@@ -6,6 +7,7 @@ pub struct RomHeader {
     _flags_ext: Vec<u8>,
 }
 
+#[derive(Clone, Default)]
 pub struct Cartridge {
     pub(crate) _header: RomHeader,
     pub(crate) prg_rom: Vec<u8>,

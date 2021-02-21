@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
 use std::convert::TryInto;
 
 use super::apu;
@@ -20,23 +22,32 @@ pub const AUDIO_SAMPLE_RATE: usize = 48000;
 pub const AUDIO_SAMPLES_PER_FRAME: usize = AUDIO_SAMPLE_RATE / 60;
 
 pub struct Nes {
+    cartridge: Cartridge,
     state: State,
 }
 
+big_array! { BigArray; }
+
+#[derive(Serialize, Deserialize)]
 pub struct State {
+    #[serde(with = "BigArray")]
     pub ram: [u8; 2048],
     pub cpu: cpu::CpuState,
     pub ppu: ppu::PpuState,
     pub apu: apu::ApuState,
+    #[serde(with = "mapper")]
     pub mapper: Box<dyn mapper::Mapper>,
     pub controller1: controller::ControllerState,
     pub controller2: controller::ControllerState,
+
+    #[serde(skip)]
     pub debug: debug::Debug,
 }
 
 impl Nes {
     pub fn new(debug: debug::Debug, cart: Cartridge) -> Nes {
         let mut nes = Nes {
+            cartridge: cart.clone(),
             state: State::new(debug, cart),
         };
         nes.state.cpu.pc = cpu::vector_reset(&mut nes.state);
@@ -88,11 +99,14 @@ impl Nes {
     }
 
     pub fn get_state(&self) -> Vec<u8> {
-        vec![]
+        bincode::serialize(&self.state).unwrap()
     }
 
-    pub fn set_state(&mut self, _state: &[u8]) -> Result<(), ()> {
-        Err(())
+    pub fn set_state(&mut self, data: &[u8]) -> Result<(), ()> {
+        let mut new_state: State = bincode::deserialize(data).map_err(|_| ())?;
+        new_state.mapper.update_cartridge(self.cartridge.clone());
+        self.state = new_state;
+        Ok(())
     }
 }
 

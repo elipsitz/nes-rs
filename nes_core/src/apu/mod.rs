@@ -1,4 +1,6 @@
 use super::nes::{State, AUDIO_SAMPLES_PER_FRAME};
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
 
 mod dmc;
 mod noise;
@@ -13,10 +15,17 @@ const LENGTH_TABLE: [u8; 32] = [
     192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
+big_array! { BigArray; AUDIO_SAMPLES_PER_FRAME, FULL_AUDIO_BUFFER_LEN }
+
+#[derive(Serialize, Deserialize)]
 pub struct ApuState {
     /// Downsampled audio buffer (one frame's worth).
+    // #[serde(skip)]
+    #[serde(with = "BigArray")]
     pub audio_buffer: [f32; AUDIO_SAMPLES_PER_FRAME],
     /// Non-downsampled audio buffer.
+    //#[serde(skip)]
+    #[serde(with = "BigArray")]
     full_audio_buffer: [f32; FULL_AUDIO_BUFFER_LEN],
     audio_index: usize,
     /// Number of CPU cycles in this frame.

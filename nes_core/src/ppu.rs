@@ -1,5 +1,7 @@
 use super::cpu;
 use super::nes::{State, FRAME_DEPTH, FRAME_SIZE, FRAME_WIDTH};
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
 
 const COLORS: [u32; 64] = [
     0x545454, 0x001e74, 0x081090, 0x300088, 0x440064, 0x5c0030, 0x540400, 0x3c1800, 0x202a00,
@@ -12,7 +14,9 @@ const COLORS: [u32; 64] = [
     0x000000,
 ];
 
-#[derive(Copy, Clone)]
+big_array! { BigArray; 256, 245760 }
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
 struct SpriteBufferData {
     id: u8,
     color: u8,
@@ -32,6 +36,7 @@ impl Default for SpriteBufferData {
 }
 
 #[allow(dead_code)]
+#[derive(Serialize, Deserialize)]
 pub struct PpuState {
     pub scanline: u16,
     pub tick: u16,
@@ -41,6 +46,8 @@ pub struct PpuState {
     // Last CPU cycle that we emulated at.
     last_cpu_cycle: u64,
 
+    //#[serde(skip)]
+    #[serde(with = "BigArray")]
     pub frame_buffer: [u8; FRAME_SIZE],
 
     is_rendering: bool,
@@ -51,6 +58,7 @@ pub struct PpuState {
     vblank: u8,
 
     oam_addr: usize,
+    #[serde(with = "BigArray")]
     pub oam_1: [u8; 256],
     oam_2: [u8; 32],
     sprite_eval_n: usize,
@@ -58,6 +66,7 @@ pub struct PpuState {
     sprite_eval_read: u8,
     sprite_eval_scanline_count: usize,
     sprite_eval_has_sprite0: bool, // Whether sprite0 is at oam_2[0]
+    #[serde(with = "BigArray")]
     sprite_buffer: [SpriteBufferData; 256], // Sprite scanline buffer.
 
     pub palette: [u8; 32],

@@ -12,6 +12,7 @@ const OVERLAYS: [Overlay; 3] = [Overlay::None, Overlay::PatternTable, Overlay::S
 pub struct Debug {
     pub cpu_log: bool,
     pub overlay: usize,
+
     pub overlay_buffer: [u8; nes::FRAME_SIZE],
 }
 

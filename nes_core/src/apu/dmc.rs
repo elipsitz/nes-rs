@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{cpu::InterruptKind, nes::State};
 
 /// In units of APU clock.
@@ -5,6 +7,7 @@ const RATE_TABLE: [u16; 16] = [
     214, 190, 170, 160, 143, 127, 113, 107, 95, 80, 71, 64, 53, 42, 36, 27,
 ];
 
+#[derive(Serialize, Deserialize)]
 pub struct Dmc {
     freq_counter: u16,
     output: u8,

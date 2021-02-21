@@ -1,9 +1,17 @@
 use super::cartridge::Cartridge;
 use super::mapper::{translate_vram, Mapper, MirrorMode};
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
 
+big_array! { BigArray; 2048, 8192 }
+
+#[derive(Serialize, Deserialize)]
 pub struct MapperMmc3 {
+    #[serde(skip)]
     cart: Cartridge,
+    #[serde(with = "BigArray")]
     ram: [u8; 8192],
+    #[serde(with = "BigArray")]
     vram: [u8; 2048],
 
     reg_bank_select: u8,
@@ -32,6 +40,8 @@ fn get_bank_offset(total_size: usize, bank_size: usize, bank: i32) -> usize {
 }
 
 impl MapperMmc3 {
+    pub const ID: u8 = 4;
+
     pub fn new(cart: Cartridge) -> MapperMmc3 {
         let mut mapper = MapperMmc3 {
             cart,
@@ -218,5 +228,13 @@ impl Mapper for MapperMmc3 {
 
     fn check_irq(&self) -> bool {
         self.irq_pending
+    }
+
+    fn get_id(&self) -> u8 {
+        Self::ID
+    }
+
+    fn update_cartridge(&mut self, cartridge: Cartridge) {
+        self.cart = cartridge;
     }
 }

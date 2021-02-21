@@ -1,6 +1,8 @@
 use crate::nes::State;
 
-#[derive(Default, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct ControllerState {
     pub a: bool,
     pub b: bool,

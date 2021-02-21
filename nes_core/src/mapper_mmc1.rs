@@ -1,9 +1,17 @@
 use super::cartridge::Cartridge;
 use super::mapper::{translate_vram, Mapper, MirrorMode};
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
 
+big_array! { BigArray; 2048, 8192 }
+
+#[derive(Serialize, Deserialize)]
 pub struct MapperMmc1 {
+    #[serde(skip)]
     cart: Cartridge,
+    #[serde(with = "BigArray")]
     ram: [u8; 8192],
+    #[serde(with = "BigArray")]
     vram: [u8; 2048],
 
     shift_number: u8,
@@ -21,6 +29,8 @@ pub struct MapperMmc1 {
 }
 
 impl MapperMmc1 {
+    pub const ID: u8 = 1;
+
     pub fn new(cart: Cartridge) -> MapperMmc1 {
         let mut mapper = MapperMmc1 {
             cart,
@@ -147,5 +157,13 @@ impl Mapper for MapperMmc1 {
             }
             _ => {}
         };
+    }
+
+    fn get_id(&self) -> u8 {
+        Self::ID
+    }
+
+    fn update_cartridge(&mut self, cartridge: Cartridge) {
+        self.cart = cartridge;
     }
 }
