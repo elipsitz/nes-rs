@@ -105,17 +105,22 @@ fn run_emulator(
     let mut was_paused = paused;
 
     let mut event_pump = sdl_context.event_pump()?;
+    let mut last_event: Option<sdl2::event::Event> = None;
     'running: loop {
-        // Check events.
-        for event in event_pump.poll_iter() {
-            match event {
+        // Handle events.
+        loop {
+            // Allow for events we waited for previously.
+            if last_event.is_none() {
+                last_event = event_pump.poll_event();
+                if last_event.is_none() {
+                    break;
+                }
+            }
+            match last_event.take().unwrap() {
                 sdl2::event::Event::Quit { .. } => {
                     break 'running;
                 }
-                sdl2::event::Event::Window {
-                    win_event,
-                    ..
-                } => match win_event {
+                sdl2::event::Event::Window { win_event, .. } => match win_event {
                     sdl2::event::WindowEvent::FocusGained => {
                         paused = was_paused;
                     }
@@ -123,8 +128,8 @@ fn run_emulator(
                         was_paused = paused;
                         paused = true;
                     }
-                    _ => {},
-                }
+                    _ => {}
+                },
                 sdl2::event::Event::KeyDown {
                     keycode: Some(code),
                     keymod,
@@ -201,7 +206,7 @@ fn run_emulator(
 
             canvas.present();
         } else {
-            std::thread::sleep(Duration::from_millis(50));
+            last_event = Some(event_pump.wait_event());
         }
 
         // FPS display
