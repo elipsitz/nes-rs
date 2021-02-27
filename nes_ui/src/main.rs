@@ -189,7 +189,14 @@ fn run_emulator(
                 .map_err(|e| e.to_string())?;
             canvas.copy(&texture, None, None)?;
 
-            audio_device.queue(nes.get_audio_buffer());
+            // Target maximum of 8 frames of samples in the buffer.
+            let samples_queued = (audio_device.size() as usize) / 4;
+            let samples_max = 8 * nes_core::AUDIO_SAMPLE_RATE / 60;
+            if samples_queued < samples_max {
+                let buffer = nes.get_audio_buffer();
+                let to_add = usize::min(buffer.len(), samples_max - samples_queued);
+                audio_device.queue(&buffer[..to_add]);
+            }
             if let Some(f) = &mut audio_out {
                 for &sample in nes.get_audio_buffer() {
                     f.write_sample(sample).unwrap();
